@@ -7,24 +7,37 @@
  */
 
 var SharedWLRemoteLink      = nil,
+    DefaultBaseUrl          = '/api/',
     WLRemoteLinkRetryDelay  = 10; // in seconds
 
 WLRemoteLinkStateNormal                 = 0;
 WLRemoteLinkStateAuthenticationError    = 1;
 WLRemoteLinkStateRequestFailureError    = 2;
 
-WLLoginActionDidSucceedNotification = "WLLoginDidSucceedNotification";
-WLLoginActionDidFailNotification = "WLLoginDidFailNotification";
+WLLoginActionDidSucceedNotification     = "WLLoginDidSucceedNotification";
+WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
 
 /*!
-    A link to the server side of things with the ability to queue and perform
-    actions, and to interpret responses. The class also manages the timing of
-    the actions, and various login and error related handling.
+    A link to the server side API where the RemoteObjects live. WLRemoteLink does the following:
+
+    * enqueues actions and performs them sequentially
+    * receives responses
+    * detects errors and retries actions
+    * detects expired authentication
+    * works together with RemoteObject to collect multiple `PUT` operations into single ones
+    * allows special error state actions to run with priority
 
     Queued actions are executed strictly in order to allow for actions to be
-    scheduled for objects which don't have PKs yet. The action would simply
-    set the right PK in its remoteActionWillBegin delegate method, since the
-    sequential nature of the queue means the POST has gone before the PUT.
+    scheduled for objects which don't have PKs yet. E.g. you could enqueue an
+    action to POST an object A and then another to PUT an update to A. When the
+    POST finishes you receive the server side PK/URI for the new object and in the
+    `PUT` action's `remoteActionWillBegin` you can set the correct URI to `put` to.
+    The sequential nature of the queue means the POST has gone before the PUT.
+
+    Special "in error state" actions can move to the top of the queue during error
+    states. This allows 'session timed out' errors to be rectified with an action
+    which restores the session, after which any other scheduled actions will proceed
+    like normal.
 */
 @implementation WLRemoteLink : CPObject
 {
@@ -45,8 +58,13 @@ WLLoginActionDidFailNotification = "WLLoginDidFailNotification";
     int         state @accessors;
 }
 
++ (void)setDefaultBaseURL:(CPString)anApiUrl
+{
+    DefaultBaseUrl = anApiUrl;
+}
+
 /*!
-    Returns the singleton instance of the CPRemoteLink.
+    Returns the singleton instance of the WLRemoteLink.
 */
 + (WLRemoteLink)sharedRemoteLink
 {
@@ -66,16 +84,15 @@ WLLoginActionDidFailNotification = "WLLoginDidFailNotification";
     if (self = [super init])
     {
         state = 0;
-        // Optimistically assume we're logged in initially.
+        // Optimistically assume we're authenticated initially.
         isAuthenticated = YES;
         _retryOneAction = NO;
         lastSuccessfulSave = [CPDate date];
         shouldFlushActions = NO;
         actionQueue = [];
-        baseUrl = "/api/";
-        if (typeof CHRONICLE_API_URL !== 'undefined')
-            baseUrl = CHRONICLE_API_URL;
+        baseUrl = DefaultBaseUrl;
     }
+
     return self;
 }
 
@@ -121,7 +138,7 @@ WLLoginActionDidFailNotification = "WLLoginDidFailNotification";
 
 - (void)scheduleAction:(WLRemoteAction)action
 {
-    // CPLog.info("Remote op scheduled: "+[action description]);
+    // CPLog.info("Remote op scheduled: " + [action description]);
     var i = [actionQueue count],
         indexes = [CPIndexSet indexSetWithIndex:i];
     [self willChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:"actionQueue"];
@@ -131,7 +148,7 @@ WLLoginActionDidFailNotification = "WLLoginDidFailNotification";
     if ([action isSaveAction])
         [self setHasSaveActions:YES];
 
-    //CPLog.info("Action queue: "+actionQueue);
+    //CPLog.info("Action queue: " + actionQueue);
 
     // Limit the rate of actions to make sure the browser gets a chance to refresh
     // the UI. This probably only really matters when running against localhost but
@@ -174,6 +191,7 @@ WLLoginActionDidFailNotification = "WLLoginDidFailNotification";
 {
     if (hasSaveActions === aFlag)
         return;
+
     // If we go from having actions to not, then a save just completed.
     // We'll bump it in the opposite case too: if there were no save actions
     // before, we were obviously saved up. We bump so that the 'time since last
@@ -225,12 +243,12 @@ WLLoginActionDidFailNotification = "WLLoginDidFailNotification";
     //CPLog.info("Remote op finished: "+[anAction description]);
 
     var actionIndex = [actionQueue indexOfObject:anAction];
-    if (actionIndex == CPNotFound && ![anAction isKindOfClass:WLLoginAction])
+    if (actionIndex == CPNotFound && ![anAction isLoginAction])
     {
         CPLog.error("Unscheduled action finished");
     }
 
-    if (![anAction shouldRunInErrorState] && ![anAction isKindOfClass:WLLogoutAction])
+    if (![anAction shouldRunInErrorState] && ![anAction isLogoutAction])
     {
         // The success of a normal action indicates we're logged in.
         if (!isAuthenticated)
@@ -239,7 +257,8 @@ WLLoginActionDidFailNotification = "WLLoginDidFailNotification";
     // Any successful action means the link is nominal.
     [self setState:WLRemoteLinkStateNormal];
 
-    if (actionIndex !== CPNotFound && actionQueue[actionIndex] === anAction) {
+    if (actionIndex !== CPNotFound && actionQueue[actionIndex] === anAction)
+    {
         var indexes = [CPIndexSet indexSetWithIndex:actionIndex];
         [self willChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:"actionQueue"];
         [actionQueue removeObjectAtIndex:actionIndex];
@@ -390,8 +409,6 @@ WLRemoteActionPutType         = 2;
 */
 WLRemoteActionDeleteType      = 3;
 
-var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"];
-
 /*
 For a later potential bitmask optimization.
 
@@ -399,7 +416,9 @@ var WLRemoteActionDelegate_remoteAction_willBegin             = 1 << 0,
     WLRemoteActionDelegate_remoteAction_didFinish             = 1 << 1;
 */
 
-var WLRemoteActionSerial = 1;
+var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
+
+    WLRemoteActionSerial = 1;
 
 @implementation WLRemoteAction : CPObject
 {
@@ -436,7 +455,7 @@ var WLRemoteActionSerial = 1;
         r = [[CPArray alloc] init],
         key;
 
-    while (key=[keys nextObject])
+    while (key = [keys nextObject])
     {
         var value = [data objectForKey:key];
         value = value.replace(new RegExp('%', 'g'), '%25');
@@ -447,7 +466,7 @@ var WLRemoteActionSerial = 1;
     return r.join("&");
 }
 
-- (id)initWithType:(WLRemoteActionType)aType path:(CPString)aPath delegate:(id)aDelegate message:(CPString) aMessage
+- (id)initWithType:(WLRemoteActionType)aType path:(CPString)aPath delegate:(id)aDelegate message:(CPString)aMessage
 {
     if (self = [super init])
     {
@@ -460,6 +479,7 @@ var WLRemoteActionSerial = 1;
         payload = nil;
         [self setDelegate:aDelegate];
     }
+
     return self;
 }
 
@@ -513,6 +533,26 @@ var WLRemoteActionSerial = 1;
     return type !== WLRemoteActionGetType;
 }
 
+/*!
+    Return true if this action causes the link to become authenticated.
+*/
+- (BOOL)isLoginAction
+{
+    return NO;
+}
+
+/*!
+    Return true if success for this action indicates the user is no longer authenticated.
+*/
+- (BOOL)isLogoutAction
+{
+    return NO;
+}
+
+/*!
+    Reset the action so that it can be retried. This message is sent after an action fails due to
+    a network or a server error and will need to be performed a second time.
+*/
 - (void)reset
 {
     connection = nil;
@@ -521,7 +561,7 @@ var WLRemoteActionSerial = 1;
 
 - (void)makeRequest
 {
-    CPLog.info("makeRequest: "+self);
+    CPLog.info("makeRequest: " + self);
     if (connection || done)
     {
         CPLog.error("Action fired twice without reset.");
@@ -571,6 +611,7 @@ var WLRemoteActionSerial = 1;
 - (void)connection:(CPURLConnection)aConnection didReceiveResponse:(CPURLResponse)aResponse
 {
     [self setStatusCode:200];
+
     if ([aResponse class] == CPHTTPURLResponse)
     {
         var code = [aResponse statusCode];
@@ -597,7 +638,7 @@ var WLRemoteActionSerial = 1;
     if (error === 0)
     {
         // Sometimes we get code 0 back. Often this means there was no response, e.g.
-        // no connection with the server. Simulate a 503 error in that case.
+        // no connection could be made. Simulate a 503 error in that case.
         error = [aConnection _HTTPRequest].success() ? 200 : 503;
     }
 
@@ -619,7 +660,7 @@ var WLRemoteActionSerial = 1;
                     // Login needed.
                     error = 401;
                 } else {
-                    CPLog.error("Got error: "+result["error"]+": "+result["message"]);
+                    CPLog.error("Got error: " + result["error"] + ": " + result["message"]);
                     error = 500;
                 }
             }
@@ -700,7 +741,7 @@ var WLRemoteActionSerial = 1;
 
 - (CPString)description
 {
-    return "<WLRemoteAction "+serial+" "+WLRemoteActionTypeNames[type]+" "+[self fullPath]+" "+payload+">";
+    return "<WLRemoteAction " + serial + " " + WLRemoteActionTypeNames[type] + " " + [self fullPath] + " " + payload + ">";
 }
 
 @end

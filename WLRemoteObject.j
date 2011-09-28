@@ -100,10 +100,23 @@ var WLRemoteObjectByClassByPk = {},
         _propertyLastModified = {};
         _deferredProperties = [CPSet set];
         lastSyncedAt = [CPDate distantPast];
-        undoManager = nil;
+
         [self registerRemoteProperties:[
             [RemoteProperty propertyWithLocalName:'pk' remoteName:'id'],
         ]];
+    }
+
+    return self;
+}
+
+- (id)initWithJson:(id)js
+{
+    _suppressRemotePropertiesObservation = YES;
+    if (self = [self init])
+    {
+        [self updateFromJson:js];
+        _suppressRemotePropertiesObservation = NO;
+        [self activateRemotePropertiesObservation];
     }
     return self;
 }
@@ -119,6 +132,8 @@ var WLRemoteObjectByClassByPk = {},
         if (!_suppressRemotePropertiesObservation)
         {
             [self addObserver:self forKeyPath:[property localName] options:nil context:property];
+            // FIXME Since the undo manager is no longer read from a central place, this will do nothing.
+            // This action needs to be taken when setUndoManager: is received instead.
             [self registerKeyForUndoManagement:[property localName]];
         }
         [_remoteProperties addObject:property];
@@ -239,21 +254,9 @@ var WLRemoteObjectByClassByPk = {},
     {
         if ([property localName] == localName)
             return [_deferredProperties containsObject:property];
-
     }
+
     [CPException raise:CPInvalidArgumentException reason:@"Unable to find property " + localName + "."];
-}
-
-- (void)initWithJson:(id) js
-{
-    _suppressRemotePropertiesObservation = YES;
-    if (self = [self init])
-    {
-        [self updateFromJson:js];
-        _suppressRemotePropertiesObservation = NO;
-        [self activateRemotePropertiesObservation];
-    }
-    return self;
 }
 
 - (void)setPk:(long)aPk
@@ -338,7 +341,7 @@ var WLRemoteObjectByClassByPk = {},
 + (CPArray)objectsFromJson:jsonArray
 {
     var r = [CPArray array];
-    for(var i = 0; i < jsonArray.length; i++)
+    for (var i = 0; i < jsonArray.length; i++)
     {
         [r addObject:[[self alloc] initWithJson: jsonArray[i]]];
     }
@@ -347,15 +350,16 @@ var WLRemoteObjectByClassByPk = {},
 
 + (void)addRemoteObject:(WLRemoteObject)anObject to:(CPObject)target inKey:(CPString)aKey
 {
-    var sourceArray = [target valueForKey:aKey];
-    // indexOfObject first searches by isEqual which matches by PK. Then it searches
-    // by identity. In both cases a match indicates we should replace.
-    var index = [sourceArray indexOfObject:anObject];
+    var sourceArray = [target valueForKey:aKey],
+        // indexOfObject first searches by isEqual which matches by PK. Then it searches
+        // by identity. In both cases a match indicates we should replace.
+        index = [sourceArray indexOfObject:anObject];
+
     if (index != CPNotFound)
-        [CPException raise:CPInvalidArgumentException reason:@"Object "+target+" already exists in array."];
+        [CPException raise:CPInvalidArgumentException reason:@"Object " + target + " already exists in array."];
 
     // Append to the end.
-    index = sourceArray.length-1;
+    index = sourceArray.length - 1;
     var indexes = [CPIndexSet indexSetWithIndex:index];
     [target willChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:aKey];
     [sourceArray insertObject:anObject atIndex:index];
@@ -364,10 +368,10 @@ var WLRemoteObjectByClassByPk = {},
 
 + (void)removeRemoteObject:(WLRemoteObject)anObject from:(CPObject)target inKey:(CPString)aKey
 {
-    var sourceArray = [target valueForKey:aKey];
-    var index = [sourceArray indexOfObject:anObject];
+    var sourceArray = [target valueForKey:aKey],
+        index = [sourceArray indexOfObject:anObject];
     if (index == CPNotFound)
-        [CPException raise:CPInvalidArgumentException reason:@"Object "+target+" doesn't exists in the array."];
+        [CPException raise:CPInvalidArgumentException reason:@"Object " + target + " doesn't exists in the array."];
 
     var indexes = [CPIndexSet indexSetWithIndex:index];
     [target willChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:aKey];
@@ -382,10 +386,10 @@ var WLRemoteObjectByClassByPk = {},
     return remoteObject;
 }
 
-+ (void)objectByPk:(long)pk inArray:(CPArray) anArray
++ (void)objectByPk:(long)pk inArray:(CPArray)anArray
 {
-    var dummy = [WLRemoteObject dummyForPk:pk];
-    var index = [anArray indexOfObject:dummy];
+    var dummy = [WLRemoteObject dummyForPk:pk],
+        index = [anArray indexOfObject:dummy];
 
     if (index != CPNotFound)
     {
@@ -437,12 +441,13 @@ var WLRemoteObjectByClassByPk = {},
     // FIXME Should this be here or in init somewhere? In init we don't yet know if
     // this object will be loaded from remote or if it's being created.
 
-    // Since we're creating the entry, there are no deferred fields. Without clearing
-    // these, viewing the entry would lead to a pointless GET.
+    // Since we're creating the object, there are no deferred fields. Without clearing
+    // these, ensureLoaded would lead to a pointless GET.
     _deferredProperties = [CPSet set];
 
-    // Also consider all fields dirty so that any initial values like the name 'unnamed'
-    // for a new tag gets POSTed.
+    // Also consider all fields dirty so that any initial values get POSTed. E.g. if a new
+    // RemoteObject has a title attribute like 'unnamed' by default, that should be transmitted
+    // to the server.
     [self makeAllDirty];
 
     createAction = [WLRemoteAction schedule:WLRemoteActionPostType path:[self remotePath] delegate:self message:"Create " + [self description]];
@@ -453,7 +458,7 @@ var WLRemoteObjectByClassByPk = {},
     if ([self isNew] || deleteAction !== nil)
         return;
 
-    deleteAction = [WLRemoteAction schedule:WLRemoteActionDeleteType path:[self remotePath] delegate:self message:"Delete entry"];
+    deleteAction = [WLRemoteAction schedule:WLRemoteActionDeleteType path:[self remotePath] delegate:self message:"Delete " + [self description]];
 }
 
 - (void)ensureLoaded
@@ -462,7 +467,7 @@ var WLRemoteObjectByClassByPk = {},
         return;
 
     // path TBD
-    contentDownloadAction = [WLRemoteAction schedule:WLRemoteActionGetType path:nil delegate:self message:"Loading entry..."];
+    contentDownloadAction = [WLRemoteAction schedule:WLRemoteActionGetType path:nil delegate:self message:"Loading " + [self description]];
 }
 
 - (void)ensureSaved
@@ -471,7 +476,8 @@ var WLRemoteObjectByClassByPk = {},
         return;
 
     // If a save action is already in the pipe, relax.
-    if (saveAction !== nil) {
+    if (saveAction !== nil)
+    {
         if (![saveAction isStarted])
             return;
 
@@ -483,8 +489,8 @@ var WLRemoteObjectByClassByPk = {},
         return;
     }
 
-    CPLog.info("Save "+self+" dirt: "+[[self dirtyProperties] description]);
-    saveAction = [WLRemoteAction schedule:WLRemoteActionPutType path:nil delegate:self message:"Waiting to save entry..."];
+    CPLog.info("Save " + self + " dirt: " + [[self dirtyProperties] description]);
+    saveAction = [WLRemoteAction schedule:WLRemoteActionPutType path:nil delegate:self message:"Save " + [self description]];
 }
 
 - (void)remoteActionWillBegin:(WLRemoteAction)anAction
@@ -493,7 +499,7 @@ var WLRemoteObjectByClassByPk = {},
     {
         if (pk)
         {
-            CPLog.error("Attempt to create an existing entry");
+            CPLog.error("Attempt to create an existing object");
             return;
         }
 
@@ -505,28 +511,28 @@ var WLRemoteObjectByClassByPk = {},
     {
         if (pk === nil)
         {
-            CPLog.error("Attempt to delete an non existant entry");
+            CPLog.error("Attempt to delete a non existant object");
             return;
         }
 
         [anAction setPayload:nil];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
-        [anAction setPath:[self remotePath]+"/"+pk];
+        [anAction setPath:[self remotePath] + "/" + pk];
     }
     else if ([anAction type] == WLRemoteActionPutType)
     {
         if (!pk)
         {
-            CPLog.error("Attempt to save non created entry "+[self description]);
+            CPLog.error("Attempt to save non created object " + [self description]);
             return;
         }
 
-        [anAction setMessage:"Saving entry..."];
+        [anAction setMessage:"Saving " + [self description]];
         [anAction setPayload:[self asPostJSObject]];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
-        [anAction setPath:[self remotePath]+"/"+pk];
+        [anAction setPath:[self remotePath] + "/" + pk];
     }
     else if ([anAction type] == WLRemoteActionGetType)
     {
@@ -536,7 +542,7 @@ var WLRemoteObjectByClassByPk = {},
             return;
         }
 
-        [anAction setPath:[self remotePath]+"/"+pk];
+        [anAction setPath:[self remotePath] + "/" + pk];
     }
 }
 
@@ -581,7 +587,8 @@ var WLRemoteObjectByClassByPk = {},
     else if ([anAction type] == WLRemoteActionPutType)
     {
         saveAction = nil;
-        if (_mustSaveAgain) {
+        if (_mustSaveAgain)
+        {
             _mustSaveAgain = NO;
             [self ensureSaved];
         }
@@ -665,7 +672,7 @@ var WLRemoteObjectClassKey = "WLRemoteObjectClassKey",
 
 - (CPString)description
 {
-    return "<RemoteProperty "+remoteName+":"+localName+">";
+    return "<RemoteProperty " + remoteName + ":" + localName + ">";
 }
 
 @end

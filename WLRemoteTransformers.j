@@ -22,8 +22,10 @@
 {
     if (value)
     {
-        // We get dates in UTC implied.
-        value += ' +0000';
+        // If the timezone specifier was left out, add it.
+        var dateTestRegEx = new RegExp(' [+-]\d{4}$');
+        if (!reg.test(value))
+            value += ' +0000';
         return [[CPDate alloc] initWithString:value];
     }
     else
@@ -68,7 +70,7 @@
 - (id)reverseTransformedValue:(id)value
 {
     if (value)
-        return { 'id': value };
+        return {'id': value};
     else
         return {};
 }
@@ -128,7 +130,7 @@
 }
 
 /*!
-    Reverse is not exact and just generates id's even if the original
+    Reverse is not exact and just generates ids even if the original
     input had more data.
 */
 - (id)reverseTransformedValue:(id)values

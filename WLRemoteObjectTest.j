@@ -70,7 +70,7 @@
 {
     var test1 = [[TestRemoteObject alloc] initWithJson:{}],
         test2 = [[TestRemoteObject alloc] initWithJson:{'id': 1, 'name': 'test2 name', 'other_objects':
-            [ { 'id': 5, 'coolness': 17 }, { 'id': 9 }]
+            [{'id': 5, 'coolness': 17}, {'id': 9}]
         }];
 
     [self assert:[] equals:[test1 otherObjects]];
@@ -98,7 +98,7 @@
     [WLRemoteObject setDirtProof:YES];
     var test1 = [[TestRemoteObject alloc] initWithJson:{}],
         test2 = [[TestRemoteObject alloc] initWithJson:{'id': 1, 'name': 'test2 name', 'other_objects':
-            [ { 'id': 5, 'coolness': 17 }, { 'id': 9 }]
+            [{'id': 5, 'coolness': 17}, {'id': 9}]
         }];
     [WLRemoteObject setDirtProof:NO];
 
@@ -136,7 +136,7 @@
     return self;
 }
 
-- (CPString) description
+- (CPString)description
 {
     return [self UID]+ " " + [self pk] + " " + [self name];
 }
@@ -159,9 +159,9 @@
     return self;
 }
 
-- (CPString) description
+- (CPString)description
 {
-    return "OtherRemoteObject: "+[self UID]+ " " + [self pk];
+    return "OtherRemoteObject: " + [self UID] + s " " + [self pk];
 }
 
 @end
