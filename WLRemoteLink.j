@@ -1,9 +1,9 @@
 /*
  * WLRemoteLink.j
- * chronicle
+ * RemoteObject
  *
  * Created by Alexander Ljungberg on November 25, 2009.
- * Copyright 2009, WireLoad, LLC All rights reserved.
+ * Copyright 2009-11, WireLoad Inc. All rights reserved.
  */
 
 var SharedWLRemoteLink      = nil,

@@ -3,7 +3,7 @@
  * RemoteObject
  *
  * Created by Alexander Ljungberg on September 28, 2011.
- * Copyright 2011, WireLoad Inc. All rights reserved.
+ * Copyright 2009-11, WireLoad Inc. All rights reserved.
  */
 
 @implementation WLDateTransformer : CPObject

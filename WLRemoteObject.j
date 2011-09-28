@@ -2,8 +2,8 @@
  * WLRemoteObject.j
  * RemoteObject
  *
- * Refactored from Models.j, created by Alexander Ljungberg on November 16, 2009.
- * Copyright 2009, WireLoad, LLC All rights reserved.
+ * Created by Alexander Ljungberg on November 16, 2009.
+ * Copyright 2009-11, WireLoad Inc. All rights reserved.
  */
 
 var WLRemoteObjectByClassByPk = {},
