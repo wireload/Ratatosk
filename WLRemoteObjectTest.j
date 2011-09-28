@@ -122,7 +122,7 @@
     CPArray     otherObjects @accessors;
 }
 
-- (void)init
+- (id)init
 {
     if (self = [super init])
     {
@@ -148,7 +148,7 @@
     CPString coolness @accessors;
 }
 
-- (void)init
+- (id)init
 {
     if (self = [super init])
     {
@@ -161,7 +161,7 @@
 
 - (CPString)description
 {
-    return "OtherRemoteObject: " + [self UID] + s " " + [self pk];
+    return "OtherRemoteObject: " + [self UID] + " " + [self pk];
 }
 
 @end
