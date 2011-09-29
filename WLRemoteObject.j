@@ -91,6 +91,21 @@ var WLRemoteObjectByClassByPk = {},
     return WLRemoteObjectDirtProof;
 }
 
+/*!
+    Specify object properties by implementing this class method on subclasses. The format is:
+
+    [
+        [<local property name> [, remote property name [, property transformer]]]
+    ]
+
+    If no remote property name is specified, the local property name is used as the remote property
+    name.
+*/
++ (CPArray)remoteProperties
+{
+    return nil;
+}
+
 - (void)init
 {
     if (self = [super init])
@@ -101,9 +116,32 @@ var WLRemoteObjectByClassByPk = {},
         _deferredProperties = [CPSet set];
         lastSyncedAt = [CPDate distantPast];
 
-        [self registerRemoteProperties:[
-            [RemoteProperty propertyWithLocalName:'pk' remoteName:'id'],
-        ]];
+        var remoteProperties = [
+                [RemoteProperty propertyWithLocalName:'pk' remoteName:'id']
+            ],
+            otherProperties = [[self class] remoteProperties];
+
+        if (otherProperties)
+        {
+            for (var i = 0, count = [otherProperties count]; i < count; i++)
+            {
+                var property = otherProperties[i],
+                    localName = property[0],
+                    remoteName = property[1],
+                    transformer = property[2];
+
+                if (!localName)
+                    [CPException raise:CPInvalidArgumentException reason:@"Incorrect `+ (CPArray)remoteProperties` for RemoteObject classs " + [self class] + "."];
+                if (!remoteName)
+                    remoteName = localName;
+                if (!transformer)
+                    transformer = nil;
+
+                [remoteProperties addObject:[RemoteProperty propertyWithLocalName:localName remoteName:remoteName transformer:transformer]];
+            }
+        }
+
+        [self registerRemoteProperties:remoteProperties];
     }
 
     return self;

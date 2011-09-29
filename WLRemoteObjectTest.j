@@ -122,16 +122,20 @@
     CPArray     otherObjects @accessors;
 }
 
++ (CPArray)remoteProperties
+{
+    return [
+        ['name'],
+        ['count'],
+        ['otherObjects', 'other_objects', [WLForeignKeyTransformer forObjectClass:OtherRemoteObject]],
+    ];
+}
+
 - (id)init
 {
     if (self = [super init])
     {
         otherObjects = [];
-        [self registerRemoteProperties:[
-            [RemoteProperty propertyWithName:'name'],
-            [RemoteProperty propertyWithName:'count'],
-            [RemoteProperty propertyWithLocalName:'otherObjects' remoteName:'other_objects' transformer:[WLForeignKeyTransformer forObjectClass:OtherRemoteObject]],
-        ]];
     }
     return self;
 }
@@ -148,15 +152,11 @@
     CPString coolness @accessors;
 }
 
-- (id)init
++ (CPArray)remoteProperties
 {
-    if (self = [super init])
-    {
-        [self registerRemoteProperties:[
-            [RemoteProperty propertyWithName:'coolness'],
-        ]];
-    }
-    return self;
+    return [
+        ['coolness'],
+    ];
 }
 
 - (CPString)description
