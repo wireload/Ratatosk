@@ -56,6 +56,8 @@ WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
     BOOL        isAuthenticated @accessors;
     BOOL        _retryOneAction;
     int         state @accessors;
+
+    CPString     authorizationHeader @accessors;
 }
 
 + (void)setDefaultBaseURL:(CPString)anApiUrl
@@ -570,6 +572,7 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
     var request = [CPURLRequest requestWithURL:[self fullPath]];
 
     [request setHTTPMethod:WLRemoteActionTypeNames[type]];
+    [request setValue:@"application/json; charset=utf-8" forHTTPHeaderField:@"Accept"];
 
     if (type == WLRemoteActionPostType || type == WLRemoteActionPutType)
     {
@@ -605,6 +608,11 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
             }
         }
     }
+
+    var authorizationHeader = [[WLRemoteLink sharedRemoteLink] authorizationHeader];
+    if (authorizationHeader)
+        [request setValue:authorizationHeader forHTTPHeaderField:@"Authorization"];
+
     connection = [CPURLConnection connectionWithRequest:request delegate:self];
 }
 
