@@ -24,7 +24,7 @@
     {
         // If the timezone specifier was left out, add it.
         var dateTestRegEx = new RegExp(' [+-]\d{4}$');
-        if (!reg.test(value))
+        if (!dateTestRegEx.test(value))
             value += ' +0000';
         return [[CPDate alloc] initWithString:value];
     }
