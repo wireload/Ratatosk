@@ -66,7 +66,7 @@
     [self assertFalse:[test1 isPropertyDeferred:'count']];
 }
 
-- (void)testForeignKeyTransformer
+- (void)testForeignObjectsTransformer
 {
     var test1 = [[TestRemoteObject alloc] initWithJson:{}],
         test2 = [[TestRemoteObject alloc] initWithJson:{'id': 1, 'name': 'test2 name', 'other_objects':
@@ -127,7 +127,7 @@
     return [
         ['name'],
         ['count'],
-        ['otherObjects', 'other_objects', [WLForeignKeyTransformer forObjectClass:OtherRemoteObject]],
+        ['otherObjects', 'other_objects', [WLForeignObjectsTransformer forObjectClass:OtherRemoteObject]],
     ];
 }
 

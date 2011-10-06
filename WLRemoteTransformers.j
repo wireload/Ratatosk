@@ -78,11 +78,10 @@
 @end
 
 /*!
-    Instantiate foreign objects using whatever info is available,
-    or update existing objects if they're already in the register.
-    In both cases, return an array with prepared instances.
+    Instantiate 0 or 1 foreign object using whatever info is available,
+    or update an existing object if it's already in the register.
 */
-@implementation WLForeignKeyTransformer : CPObject
+@implementation WLForeignObjectTransformer : CPObject
 {
     id  foreignClass;
 }
@@ -106,24 +105,58 @@
     return r;
 }
 
+- (id)transformedValue:(id)value
+{
+    if (value && value.id)
+    {
+        var id = value.id,
+            obj = [WLRemoteObject instanceOf:foreignClass forPk:id];
+        if (obj !== nil)
+            [obj updateFromJson:value];
+        else
+            obj = [[foreignClass alloc] initWithJson:value];
+        return obj;
+    }
+
+    return null;
+}
+
+/*!
+    Reverse is not exact and just generates ids even if the original
+    input had more data.
+*/
+- (id)reverseTransformedValue:(id)values
+{
+    var value = values[i],
+        pk = [value pk];
+    if (pk !== nil)
+    {
+        return {'id': parseInt(pk)};
+    }
+
+    return nil;
+}
+
+@end
+
+/*!
+    Instantiate foreign objects using whatever info is available,
+    or update existing objects if they're already in the register.
+    In both cases, return an array with prepared instances.
+*/
+@implementation WLForeignObjectsTransformer : WLForeignObjectTransformer
+{
+}
+
 - (id)transformedValue:(id)values
 {
     var r = [];
 
     for (var i = 0, count = [values count]; i < count; i++)
     {
-        var value = values[i];
-
-        if (value && value.id)
-        {
-            var id = value.id,
-                obj = [WLRemoteObject instanceOf:foreignClass forPk:id];
-            if (obj !== nil)
-                [obj updateFromJson:value];
-            else
-                obj = [[foreignClass alloc] initWithJson:value];
+        obj = [super transformedValue:values[i]];
+        if (obj !== nil)
             [r addObject:obj];
-        }
     }
 
     return r;
