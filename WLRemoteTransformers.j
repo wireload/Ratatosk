@@ -109,16 +109,8 @@ var IsNumberRegExp = new RegExp('^\d+$');
 
 - (id)transformedValue:(id)value
 {
-    if (value && value.id)
-    {
-        var id = value.id,
-            obj = [WLRemoteObject instanceOf:foreignClass forPk:id];
-        if (obj !== nil)
-            [obj updateFromJson:value];
-        else
-            obj = [[foreignClass alloc] initWithJson:value];
-        return obj;
-    }
+    if (value)
+        return [[foreignClass alloc] initWithJson:value];
 
     return null;
 }
@@ -127,18 +119,20 @@ var IsNumberRegExp = new RegExp('^\d+$');
     Reverse is not exact and just generates ids even if the original
     input had more data.
 */
-- (id)reverseTransformedValue:(id)values
+- (id)reverseTransformedValue:(id)value
 {
-    var value = values[i],
-        pk = [value pk];
+    var pk = [value pk];
+    if (pk === nil)
+        return nil;
 
-    if (pk !== nil)
-    {
-        var pk
-        return {'id': parseInt(pk)};
-    }
+    var dummy = [[foreignClass alloc] init],
+        remotePkProperty = [dummy pkProperty],
+        pkString = "" + pk,
+        remoteName = [remotePkProperty remoteName],
+        rObj = {};
+    rObj[remoteName] = (IsNumberRegExp.test(pkString) ? parseInt(pkString) : pkString);
 
-    return nil;
+    return rObj;
 }
 
 @end
@@ -177,13 +171,9 @@ var IsNumberRegExp = new RegExp('^\d+$');
     for (var i = 0, count = [values count]; i < count; i++)
     {
         var value = values[i],
-            pk = [value pk],
-            pkString = "" + pk;
-
-        if (pk !== nil)
-        {
-            [r addObject:{'id': (IsNumberRegExp.test(pkString) ? parseInt(pkString) : pkString)}];
-        }
+            repr = [super reverseTransformedValue:value];
+        if (repr)
+            [r addObject:repr];
     }
 
     return r;

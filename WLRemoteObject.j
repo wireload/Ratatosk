@@ -48,7 +48,7 @@ var WLRemoteObjectByClassByPk = {},
     CPUndoManager   undoManager @accessors;
 }
 
-+ (id)instanceOf:clz forPk:(long)pk
++ (id)instanceOf:clz forPk:(id)pk
 {
     if (pk === nil)
         return nil;
@@ -65,7 +65,12 @@ var WLRemoteObjectByClassByPk = {},
     return WLRemoteObjectByClassByPk[clz][pk];
 }
 
-+ (void)setInstance:obj forPk:(long)pk
++ (id)instanceForPk:(id)aPk
+{
+    return [self instanceOf:self forPk:aPk];
+}
+
++ (void)setInstance:obj forPk:(id)pk
 {
     if (pk === nil)
         return nil;
@@ -159,6 +164,30 @@ var WLRemoteObjectByClassByPk = {},
     _suppressRemotePropertiesObservation = YES;
     if (self = [self init])
     {
+        // (This should always be true)
+        if (pk === nil || pk  === undefined)
+        {
+            // Check if the JSON is for an instance we are already tracking.
+            var pkProperty = [self pkProperty],
+                remotePkName = [pkProperty remoteName];
+            if (js[remotePkName] !== undefined)
+            {
+                var value = js[remotePkName];
+                if ([pkProperty valueTransformer])
+                    value = [[pkProperty valueTransformer] transformedValue:value];
+
+                var existingObject = [[self class] instanceForPk:value];
+
+                if (existingObject)
+                {
+                    // Yes we are tracking an existing object. Update that object instead and return it.
+                    self = existingObject;
+                    [existingObject updateFromJson:js];
+                    return self;
+                }
+            }
+        }
+
         [self updateFromJson:js];
         _suppressRemotePropertiesObservation = NO;
         [self activateRemotePropertiesObservation];
@@ -191,6 +220,11 @@ var WLRemoteObjectByClassByPk = {},
     if (aLocalName == "pk")
         return;
     [[self undoManager] observeChangesForKeyPath:aLocalName ofObject:self];
+}
+
+- (void)pkProperty
+{
+    return [self remotePropertyForKey:"pk"];
 }
 
 - (RemoteProperty)remotePropertyForKey:(CPString)aLocalName
