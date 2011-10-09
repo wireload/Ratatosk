@@ -10,10 +10,15 @@ var WLRemoteObjectByClassByPk = {},
     WLRemoteObjectDirtProof = NO;
 
 /*!
-    A WLRemoteObject has a primary key and is equal to another WLRemoteObject
-    with the same class and Pk. The object supports loading and saving
-    from and to JSON and keeps automatic track of which properties are
-    dirty and need to be saved.
+    A WLRemoteObject is an object meant to be synced with a remote object
+    through an API and a WLRemoteLink. Every WLRemoteObject must have a
+    unique primary key, which can be the REST URI of the object (as a
+    CPString) or a database numeric id. The exception is for new objects
+    have nil as their PK.
+
+    A WLRemoteObject is equal to another WLRemoteObject with the same class
+    and key. The object supports loading and saving from and to JSON and
+    keeps automatic track of which properties are dirty and need to be saved.
 
     By default, objects autosave when simple properties are changed.
 
@@ -24,7 +29,7 @@ var WLRemoteObjectByClassByPk = {},
 */
 @implementation WLRemoteObject : CPObject
 {
-    long            pk @accessors;
+    id              pk @accessors;
 
     CPSet           _remoteProperties;
     Object          _propertyLastModified;
@@ -100,10 +105,14 @@ var WLRemoteObjectByClassByPk = {},
 
     If no remote property name is specified, the local property name is used as the remote property
     name.
+
+    At a minimum the PK property has to be defined.
 */
 + (CPArray)remoteProperties
 {
-    return nil;
+    return [
+        ['pk', 'id']
+    ];
 }
 
 - (void)init
@@ -116,9 +125,7 @@ var WLRemoteObjectByClassByPk = {},
         _deferredProperties = [CPSet set];
         lastSyncedAt = [CPDate distantPast];
 
-        var remoteProperties = [
-                [RemoteProperty propertyWithLocalName:'pk' remoteName:'id']
-            ],
+        var remoteProperties = [],
             otherProperties = [[self class] remoteProperties];
 
         if (otherProperties)
@@ -297,7 +304,7 @@ var WLRemoteObjectByClassByPk = {},
     [CPException raise:CPInvalidArgumentException reason:@"Unable to find property " + localName + "."];
 }
 
-- (void)setPk:(long)aPk
+- (void)setPk:(id)aPk
 {
     var objectByPk = WLRemoteObjectByClassByPk[[self class]];
     if (pk !== nil && objectByPk !== undefined)
@@ -381,7 +388,7 @@ var WLRemoteObjectByClassByPk = {},
     var r = [CPArray array];
     for (var i = 0; i < jsonArray.length; i++)
     {
-        [r addObject:[[self alloc] initWithJson: jsonArray[i]]];
+        [r addObject:[[self alloc] initWithJson:jsonArray[i]]];
     }
     return r;
 }
@@ -417,14 +424,14 @@ var WLRemoteObjectByClassByPk = {},
     [target didChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:aKey];
 }
 
-+ (WLRemoteObject)dummyForPk:(long)pk
++ (WLRemoteObject)dummyForPk:(id)pk
 {
     var remoteObject = [[WLRemoteObject alloc] init];
     [remoteObject setPk:pk];
     return remoteObject;
 }
 
-+ (void)objectByPk:(long)pk inArray:(CPArray)anArray
++ (void)objectByPk:(id)pk inArray:(CPArray)anArray
 {
     var dummy = [WLRemoteObject dummyForPk:pk],
         index = [anArray indexOfObject:dummy];

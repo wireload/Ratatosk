@@ -6,6 +6,8 @@
  * Copyright 2009-11, WireLoad Inc. All rights reserved.
  */
 
+var IsNumberRegExp = new RegExp('^\d+$');
+
 @implementation WLDateTransformer : CPObject
 
 + (BOOL)allowsReverseTransformation
@@ -129,8 +131,10 @@
 {
     var value = values[i],
         pk = [value pk];
+
     if (pk !== nil)
     {
+        var pk
         return {'id': parseInt(pk)};
     }
 
@@ -173,10 +177,12 @@
     for (var i = 0, count = [values count]; i < count; i++)
     {
         var value = values[i],
-            pk = [value pk];
+            pk = [value pk],
+            pkString = "" + pk;
+
         if (pk !== nil)
         {
-            [r addObject:{'id': parseInt(pk)}];
+            [r addObject:{'id': (IsNumberRegExp.test(pkString) ? parseInt(pkString) : pkString)}];
         }
     }
 
