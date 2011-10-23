@@ -6,6 +6,8 @@
  * Copyright 2009-11, WireLoad Inc. All rights reserved.
  */
 
+@import "WLDate-Util.j"
+
 var IsNumberRegExp = new RegExp('^\d+$');
 
 @implementation WLDateTransformer : CPObject
