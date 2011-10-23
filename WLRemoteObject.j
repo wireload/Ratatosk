@@ -438,7 +438,7 @@ var WLRemoteObjectByClassByPk = {},
         [CPException raise:CPInvalidArgumentException reason:@"Object " + target + " already exists in array."];
 
     // Append to the end.
-    index = sourceArray.length - 1;
+    index = sourceArray.length;
     var indexes = [CPIndexSet indexSetWithIndex:index];
     [target willChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:aKey];
     [sourceArray insertObject:anObject atIndex:index];
