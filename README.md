@@ -4,6 +4,7 @@ Ratatosk
 Ratatosk is a Cappuccino remote object proxy for RESTful JSON based APIs.
 
 Features:
+
 * Download remote object JSON representation and transform it to local Objective-J objects.
 * Partial downloads (deferred loading of some properties.)
 * Generate automatic POSTs and PUTs when creating or updating objects.
