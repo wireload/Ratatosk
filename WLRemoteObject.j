@@ -10,7 +10,7 @@ var WLRemoteObjectByClassByPk = {},
     WLRemoteObjectDirtProof = NO;
 
 /*!
-    A WLRemoteObject is an object meant to be synced with a remote object
+    A WLRemoteObject is a proxy object meant to be synced with a remote object
     through an API and a WLRemoteLink. Every WLRemoteObject must have a
     unique primary key, which can be the REST URI of the object (as a
     CPString) or a database numeric id. The exception is for new objects
@@ -48,41 +48,51 @@ var WLRemoteObjectByClassByPk = {},
     CPUndoManager   undoManager @accessors;
 }
 
-+ (id)instanceOf:clz forPk:(id)pk
++ (Object)_objectsByPk
+{
+    if (WLRemoteObjectByClassByPk === nil)
+        WLRemoteObjectByClassByPk = {};
+
+    if (WLRemoteObjectByClassByPk[self] == undefined)
+        WLRemoteObjectByClassByPk[self] = {};
+
+    return WLRemoteObjectByClassByPk[self];
+}
+
++ (id)instanceForPk:(id)pk
 {
     if (pk === nil)
         return nil;
 
-    if (WLRemoteObjectByClassByPk === nil)
-        WLRemoteObjectByClassByPk = {};
-
-    if (WLRemoteObjectByClassByPk[clz] == undefined)
-        WLRemoteObjectByClassByPk[clz] = {};
-
-    if (WLRemoteObjectByClassByPk[clz][pk] == undefined)
+    var objects = [self _objectsByPk];
+    if (objects[pk] == undefined)
         return nil;
 
-    return WLRemoteObjectByClassByPk[clz][pk];
-}
-
-+ (id)instanceForPk:(id)aPk
-{
-    return [self instanceOf:self forPk:aPk];
+    return objects[pk];
 }
 
 + (void)setInstance:obj forPk:(id)pk
 {
     if (pk === nil)
         return nil;
+    if ([obj class] !== self)
+        [CPException raise:CPInvalidArgumentException reason:@"" + [obj class] + " setInstance:forPk: should be used for setting " + obj + "."];
 
-    if (WLRemoteObjectByClassByPk === nil)
-        WLRemoteObjectByClassByPk = {};
+    var objects = [self _objectsByPk];
 
-    var clz = [obj class];
-    if (WLRemoteObjectByClassByPk[clz] == undefined)
-        WLRemoteObjectByClassByPk[clz] = {};
+    objects[pk] = obj;
+}
 
-    WLRemoteObjectByClassByPk[clz][pk] = obj;
++ (CPArray)allObjects
+{
+    r = [CPMutableArray new];
+    var objects = [self _objectsByPk];
+    for (var pk in objects)
+    {
+        if (objects.hasOwnProperty(pk))
+            [r addObject:objects[pk]];
+    }
+    return r;
 }
 
 + (void)clearInstanceCache
@@ -344,7 +354,7 @@ var WLRemoteObjectByClassByPk = {},
     if (pk !== nil && objectByPk !== undefined)
         delete objectByPk[pk];
     pk = aPk;
-    [WLRemoteObject setInstance:self forPk:pk];
+    [[self class] setInstance:self forPk:pk];
 }
 
 - (void)updateFromJson:js
@@ -425,37 +435,6 @@ var WLRemoteObjectByClassByPk = {},
         [r addObject:[[self alloc] initWithJson:jsonArray[i]]];
     }
     return r;
-}
-
-+ (void)addRemoteObject:(WLRemoteObject)anObject to:(CPObject)target inKey:(CPString)aKey
-{
-    var sourceArray = [target valueForKey:aKey],
-        // indexOfObject first searches by isEqual which matches by PK. Then it searches
-        // by identity. In both cases a match indicates we should replace.
-        index = [sourceArray indexOfObject:anObject];
-
-    if (index != CPNotFound)
-        [CPException raise:CPInvalidArgumentException reason:@"Object " + target + " already exists in array."];
-
-    // Append to the end.
-    index = sourceArray.length;
-    var indexes = [CPIndexSet indexSetWithIndex:index];
-    [target willChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:aKey];
-    [sourceArray insertObject:anObject atIndex:index];
-    [target didChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:aKey];
-}
-
-+ (void)removeRemoteObject:(WLRemoteObject)anObject from:(CPObject)target inKey:(CPString)aKey
-{
-    var sourceArray = [target valueForKey:aKey],
-        index = [sourceArray indexOfObject:anObject];
-    if (index == CPNotFound)
-        [CPException raise:CPInvalidArgumentException reason:@"Object " + target + " doesn't exists in the array."];
-
-    var indexes = [CPIndexSet indexSetWithIndex:index];
-    [target willChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:aKey];
-    [sourceArray removeObjectAtIndex:index];
-    [target didChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:aKey];
 }
 
 + (WLRemoteObject)dummyForPk:(id)pk
