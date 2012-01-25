@@ -207,3 +207,47 @@ var IsNumberRegExp = new RegExp('^\d+$');
 }
 
 @end
+
+
+/*!
+    Instantiate foreign objects using a primary key value as a string only. If the
+    object is in the register, it will be used, otherwise a new unloaded object
+    will be created (which can then be sent ensureLoaded to load fully.)
+*/
+@implementation WLForeignObjectByIdTransformer : CPObject
+{
+    id  foreignClass;
+}
+
++ (BOOL)allowsReverseTransformation
+{
+    return YES;
+}
+
++ (Class)transformedValueClass
+{
+    return [WLRemoteObject class];
+}
+
++ (id)forObjectClass:aForeignClass
+{
+    if (r = [self new])
+    {
+        r.foreignClass = aForeignClass;
+    }
+    return r;
+}
+
+- (id)transformedValue:(id)value
+{
+    return [foreignClass instanceForPk:value create:YES];
+}
+
+- (id)reverseTransformedValue:(id)value
+{
+    return [value pk];
+}
+
+@end
+
+

@@ -86,12 +86,31 @@ var WLRemoteObjectByClassByPk = {},
 
 + (id)instanceForPk:(id)pk
 {
-    if (pk === nil)
+    return [self instanceForPk:pk create:NO];
+}
+
+/*!
+    Return the object with the given PK from the register. If `create` is specified,
+    a new unloaded object with the given PK will be created if the PK is not yet in
+    the register.
+
+    If pk is nil or undefined, nil is returned.
+*/
++ (id)instanceForPk:(id)pk create:(BOOL)shouldCreate
+{
+    if (pk === nil || pk === undefined)
         return nil;
 
     var objects = [self _objectsByPk];
-    if (objects[pk] == undefined)
-        return nil;
+    if (objects[pk] === undefined)
+    {
+        if (!shouldCreate)
+            return nil;
+
+        var object = [self new];
+        // Setting the pk will automatically add the object to objects[pk].
+        [object setPk:pk];
+    }
 
     return objects[pk];
 }
