@@ -155,6 +155,17 @@ var WLRemoteObjectByClassByPk = {},
     ];
 }
 
++ (CPArray)objectsFromJson:jsonArray
+{
+    var r = [CPArray array];
+    for (var i = 0; i < jsonArray.length; i++)
+    {
+        [r addObject:[[self alloc] initWithJson:jsonArray[i]]];
+    }
+    return r;
+}
+
+
 - (void)init
 {
     if (self = [super init])
@@ -450,36 +461,6 @@ var WLRemoteObjectByClassByPk = {},
         return NO;
 
     return [self pk] == [anObject pk];
-}
-
-+ (CPArray)objectsFromJson:jsonArray
-{
-    var r = [CPArray array];
-    for (var i = 0; i < jsonArray.length; i++)
-    {
-        [r addObject:[[self alloc] initWithJson:jsonArray[i]]];
-    }
-    return r;
-}
-
-+ (WLRemoteObject)dummyForPk:(id)pk
-{
-    var remoteObject = [[WLRemoteObject alloc] init];
-    [remoteObject setPk:pk];
-    return remoteObject;
-}
-
-+ (void)objectByPk:(id)pk inArray:(CPArray)anArray
-{
-    var dummy = [WLRemoteObject dummyForPk:pk],
-        index = [anArray indexOfObject:dummy];
-
-    if (index != CPNotFound)
-    {
-        return [anArray objectAtIndex:index];
-    }
-
-    return nil;
 }
 
 - (CPString)remotePath
