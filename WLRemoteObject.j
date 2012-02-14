@@ -573,7 +573,7 @@ var WLRemoteObjectByClassByPk = {},
     // to the server.
     [self makeAllDirty];
 
-    createAction = [WLRemoteAction schedule:WLRemoteActionPostType path:[self createPath] delegate:self message:"Create " + [self description]];
+    createAction = [WLRemoteAction schedule:WLRemoteActionPostType path:[self postPath] delegate:self message:"Create " + [self description]];
 }
 
 - (void)ensureDeleted
