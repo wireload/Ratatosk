@@ -482,9 +482,46 @@ var WLRemoteObjectByClassByPk = {},
     return [self pk] == [anObject pk];
 }
 
+/*!
+    The path of this resource within the API. The path should not include the path to the API root (see WLRemoteLink).
+
+    By default, the PK is assumed to the the unique path.
+*/
 - (CPString)remotePath
 {
-    // Override this method.
+    return [self pk];
+}
+
+/*!
+    The path to use when GETing (downloading) this resource. By default this is [self remotePath].
+*/
+- (CPString)getPath
+{
+    return [self remotePath];
+}
+
+/*!
+    The path to use when POSTing (creating) a new resource. By default this is [self remotePath].
+*/
+- (CPString)postPath
+{
+    return [self remotePath];
+}
+
+/*!
+    The path to use when PUTting (updating) this resource. By default this is [self remotePath].
+*/
+- (CPString)putPath
+{
+    return [self remotePath];
+}
+
+/*!
+    The path to use when DELETEing this resource. By default this is [self remotePath].
+*/
+- (CPString)deletePath
+{
+    return [self remotePath];
 }
 
 - (BOOL)isNew
@@ -601,7 +638,7 @@ var WLRemoteObjectByClassByPk = {},
         [anAction setPayload:nil];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
-        [anAction setPath:[self remotePath] + "/" + pk];
+        [anAction setPath:[self deletePath]];
     }
     else if ([anAction type] == WLRemoteActionPutType)
     {
@@ -615,7 +652,7 @@ var WLRemoteObjectByClassByPk = {},
         [anAction setPayload:[self asPostJSObject]];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
-        [anAction setPath:[self remotePath] + "/" + pk];
+        [anAction setPath:[self putPath]];
     }
     else if ([anAction type] == WLRemoteActionGetType)
     {
@@ -625,7 +662,7 @@ var WLRemoteObjectByClassByPk = {},
             return;
         }
 
-        [anAction setPath:[self remotePath] + "/" + pk];
+        [anAction setPath:[self getPath]];
     }
 }
 
