@@ -47,10 +47,11 @@ var WLRemoteObjectByClassByPk = {},
 
     By default, objects autosave when simple properties are changed.
 
-    Subclasses must implement
-    - (init)
-    - (CPString)remotePath
+    Subclasses must implement:
+        + (CPArray)remoteProperties
 
+    Subclasses might want to implement:
+        - (void)remotePath
 */
 @implementation WLRemoteObject : CPObject
 {
@@ -227,6 +228,7 @@ var WLRemoteObjectByClassByPk = {},
 - (id)initWithJson:(id)js
 {
     _suppressRemotePropertiesObservation = YES;
+
     if (self = [self init])
     {
         // (This should always be true)
@@ -257,6 +259,7 @@ var WLRemoteObjectByClassByPk = {},
         _suppressRemotePropertiesObservation = NO;
         [self activateRemotePropertiesObservation];
     }
+
     return self;
 }
 
@@ -570,7 +573,7 @@ var WLRemoteObjectByClassByPk = {},
     // to the server.
     [self makeAllDirty];
 
-    createAction = [WLRemoteAction schedule:WLRemoteActionPostType path:[self remotePath] delegate:self message:"Create " + [self description]];
+    createAction = [WLRemoteAction schedule:WLRemoteActionPostType path:[self createPath] delegate:self message:"Create " + [self description]];
 }
 
 - (void)ensureDeleted
@@ -578,7 +581,9 @@ var WLRemoteObjectByClassByPk = {},
     if ([self isNew] || deleteAction !== nil)
         return;
 
-    deleteAction = [WLRemoteAction schedule:WLRemoteActionDeleteType path:[self remotePath] delegate:self message:"Delete " + [self description]];
+    // Path might not be known yet. A delete can be scheduled before the object has been created. The path will be
+    // set in remoteActionWillBegin when the path must be known.
+    deleteAction = [WLRemoteAction schedule:WLRemoteActionDeleteType path:nil delegate:self message:"Delete " + [self description]];
 }
 
 - (void)ensureLoaded
@@ -586,7 +591,8 @@ var WLRemoteObjectByClassByPk = {},
     if ([_deferredProperties count] == 0 || contentDownloadAction !== nil)
         return;
 
-    // path TBD
+    // Path might not be known yet. A load can be scheduled before the object has been created. The path will be
+    // set in remoteActionWillBegin when the path must be known.
     contentDownloadAction = [WLRemoteAction schedule:WLRemoteActionGetType path:nil delegate:self message:"Loading " + [self description]];
 }
 
