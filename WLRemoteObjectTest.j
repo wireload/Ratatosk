@@ -38,33 +38,38 @@
 {
 }
 
+- (void)tearDown
+{
+    [WLRemoteObject clearInstanceCache];
+}
+
 - (void)testInstanceByPk
 {
-    [self assert:nil equals:[TestRemoteObject instanceOf:TestRemoteObject forPk:nil] message:"nothing for pk nil"];
+    [self assert:nil equals:[TestRemoteObject instanceForPk:nil] message:"nothing for pk nil"];
 
     var test1 = [[TestRemoteObject alloc] initWithJson:{'id': 5, 'name': 'test1'}],
         test2 = [[TestRemoteObject alloc] initWithJson:{'id': 15, 'name': 'test2'}];
 
-    [self assertTrue:[WLRemoteObject instanceOf:TestRemoteObject forPk:5] === test1 message:"test1 at pk 5"];
-    [self assertTrue:[WLRemoteObject instanceOf:TestRemoteObject forPk:15] === test2 message:"test2 at pk 15"];
+    [self assertTrue:[TestRemoteObject instanceForPk:5] === test1 message:"test1 at pk 5"];
+    [self assertTrue:[TestRemoteObject instanceForPk:15] === test2 message:"test2 at pk 15"];
 
     [test1 setPk:nil];
-    [self assert:nil equals:[WLRemoteObject instanceOf:TestRemoteObject forPk:5] message:"test1 no longer at pk 5"];
+    [self assert:nil equals:[TestRemoteObject instanceForPk:5] message:"test1 no longer at pk 5"];
 
     [test1 setPk:7];
-    [self assertTrue:[WLRemoteObject instanceOf:TestRemoteObject forPk:5] === nil message:"nothing at pk 5"];
-    [self assertTrue:[WLRemoteObject instanceOf:TestRemoteObject forPk:7] === test1 message:"test1 now at pk 7"];
-    [self assertTrue:[WLRemoteObject instanceOf:TestRemoteObject forPk:15] === test2];
+    [self assertTrue:[TestRemoteObject instanceForPk:5] === nil message:"nothing at pk 5"];
+    [self assertTrue:[TestRemoteObject instanceForPk:7] === test1 message:"test1 now at pk 7"];
+    [self assertTrue:[TestRemoteObject instanceForPk:15] === test2];
 
     // No conflicts between different kinds of remote objects.
     var test3 = [[OtherRemoteObject alloc] initWithJson:{'id': 5}],
         test4 = [[OtherRemoteObject alloc] initWithJson:{'id': 7}],
         test5 = [[OtherRemoteObject alloc] initWithJson:{'id': 15}];
 
-    [self assertTrue:[WLRemoteObject instanceOf:TestRemoteObject forPk:7] === test1];
-    [self assertTrue:[WLRemoteObject instanceOf:TestRemoteObject forPk:15] === test2];
-    [self assertTrue:[WLRemoteObject instanceOf:OtherRemoteObject forPk:7] === test4];
-    [self assertTrue:[WLRemoteObject instanceOf:OtherRemoteObject forPk:15] === test5];
+    [self assertTrue:[TestRemoteObject instanceForPk:7] === test1];
+    [self assertTrue:[TestRemoteObject instanceForPk:15] === test2];
+    [self assertTrue:[OtherRemoteObject instanceForPk:7] === test4];
+    [self assertTrue:[OtherRemoteObject instanceForPk:15] === test5];
 }
 
 - (void)testDeferredProperties
@@ -135,15 +140,15 @@
         }];
     [WLRemoteObject setDirtProof:NO];
 
-    [self assertFalse:[test1 isDirty] message:"test1 isDirty"];
-    [self assertFalse:[test2 isDirty] message:"test2 isDirty"];
+    [self assertFalse:[test1 isDirty] message:"test1 isDirty after creation"];
+    [self assertFalse:[test2 isDirty] message:"test2 isDirty after creation"];
 
     [test2 setName:"Bob"];
     [self assertFalse:[test1 isDirty] message:"test1 isDirty"];
     [self assertTrue:[test2 isDirty] message:"test2 isDirty"];
 
     [test2 cleanAll];
-    [self assertFalse:[test2 isDirty] message:"test2 isDirty"];
+    [self assertFalse:[test2 isDirty] message:"test2 isDirty after clean"];
 }
 
 @end
@@ -158,6 +163,7 @@
 + (CPArray)remoteProperties
 {
     return [
+        ['pk', 'id'],
         ['name'],
         ['count'],
         ['otherObjects', 'other_objects', [WLForeignObjectsTransformer forObjectClass:OtherRemoteObject]],
@@ -175,7 +181,7 @@
 
 - (CPString)description
 {
-    return [self UID]+ " " + [self pk] + " " + [self name];
+    return [self UID] + " " + [self pk] + " " + [self name];
 }
 
 @end
@@ -188,6 +194,7 @@
 + (CPArray)remoteProperties
 {
     return [
+        ['pk', 'id'],
         ['coolness'],
     ];
 }
