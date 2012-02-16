@@ -664,7 +664,7 @@ var WLRemoteObjectByClassByPk = {},
     {
         if (!pk)
         {
-            CPLog.error("Attempt to download non created entry "+[self description]);
+            CPLog.error("Attempt to download non created entry " + [self description]);
             return;
         }
 
