@@ -401,6 +401,11 @@ var WLRemoteObjectByClassByPk = {},
     return [_deferredProperties containsObject:property];
 }
 
+- (BOOL)isPropertyDirty:(CPString)localName
+{
+    return _propertyLastModified[localName] && _propertyLastModified[localName] >= lastSyncedAt;
+}
+
 - (void)setPk:(id)aPk
 {
     var objectByPk = WLRemoteObjectByClassByPk[[self class]];
