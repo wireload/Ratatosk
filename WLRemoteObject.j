@@ -395,15 +395,10 @@ var WLRemoteObjectByClassByPk = {},
 */
 - (BOOL)isPropertyDeferred:(CPString)localName
 {
-    var remotePropertiesEnumerator = [_remoteProperties objectEnumerator],
-        property;
-    while (property = [remotePropertiesEnumerator nextObject])
-    {
-        if ([property localName] == localName)
-            return [_deferredProperties containsObject:property];
-    }
-
-    [CPException raise:CPInvalidArgumentException reason:@"Unable to find property " + localName + "."];
+    var property = [self remotePropertyForKey:localName];
+    if (!property)
+        [CPException raise:CPInvalidArgumentException reason:@"Unknown property " + localName + "."];
+    return [_deferredProperties containsObject:property];
 }
 
 - (void)setPk:(id)aPk
