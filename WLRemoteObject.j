@@ -368,6 +368,20 @@ var WLRemoteObjectByClassByPk = {},
     }
 }
 
+/*!
+    Mark the named property as not yet having been downloaded so that [instance ensureLoaded] will cause it to be redownloaded.
+    You might do this if you know a property has updated server side and needs to be reread.
+*/
+- (void)invalidateProperty:(CPString)localName
+{
+    var property = [self remotePropertyForKey:localName];
+    if (property == nil)
+        [CPException raise:CPInvalidArgumentException reason:@"Unknown property " + localName + "."];
+
+    delete _propertyLastModified[localName];
+    [_deferredProperties addObject:property];
+}
+
 - (BOOL)isDirty
 {
     return [[self dirtyProperties] count] > 0;

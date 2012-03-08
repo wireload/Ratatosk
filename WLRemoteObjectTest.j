@@ -102,6 +102,16 @@
     [self assertTrue:[test1 isPropertyDeferred:'pk']];
     [self assertFalse:[test1 isPropertyDeferred:'name']];
     [self assertFalse:[test1 isPropertyDeferred:'count']];
+
+    [test1 setName:'hello'];
+    [self assertTrue:[test1 isPropertyDirty:'name']];
+    [test1 updateFromJson:{'name': 'bah'} preservingDirtyProperties:YES];
+    [self assert:[test1 name] equals:'hello' message:"once a property has been loaded local changes should not be overwritten by remote updates"];
+
+    [test1 invalidateProperty:"name"];
+    [self assertTrue:[test1 isPropertyDeferred:'name']];
+    [test1 updateFromJson:{'name': 'bah'} preservingDirtyProperties:YES];
+    [self assert:[test1 name] equals:"bah"];
 }
 
 - (void)testForeignObjectsTransformer
