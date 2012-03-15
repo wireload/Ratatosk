@@ -812,6 +812,9 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
 
 - (CPString)fullPath
 {
+    if (path && path.toLowerCase().substring(0, 4) == 'http')
+        return path;
+
     var baseUrl = [[WLRemoteLink sharedRemoteLink] baseUrl];
     if (path)
         return baseUrl + path;
