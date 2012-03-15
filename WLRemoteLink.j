@@ -586,6 +586,27 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
     done = NO;
 }
 
+- (void)contentType
+{
+    if ([_delegate respondsToSelector:@selector(remoteActionContentType:)])
+        return [_delegate remoteActionContentType:self];
+    return @"application/json; charset=utf-8";
+}
+
+- (CPString)encodeRequestBody:(Object)aPayload
+{
+    if ([_delegate respondsToSelector:@selector(remoteAction:encodeRequestBody:)])
+        return [_delegate remoteAction:self encodeRequestBody:aPayload];
+    return [CPString JSONFromObject:aPayload];
+}
+
+- (Object)decodeResponseBody:(CPString)responseData
+{
+    if ([_delegate respondsToSelector:@selector(remoteAction:decodeResponseBody:)])
+        return [_delegate remoteAction:self decodeResponseBody:responseData];
+    return [responseData objectFromJSON];
+}
+
 - (void)makeRequest
 {
     CPLog.info("makeRequest: " + self);
@@ -594,14 +615,16 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
         CPLog.error("Action fired twice without reset.");
         return;
     }
-    var request = [CPURLRequest requestWithURL:[self fullPath]];
+
+    var request = [CPURLRequest requestWithURL:[self fullPath]],
+        contentType = [self contentType];
 
     [request setHTTPMethod:WLRemoteActionTypeNames[type]];
-    [request setValue:@"application/json; charset=utf-8" forHTTPHeaderField:@"Accept"];
+    [request setValue:contentType forHTTPHeaderField:@"Accept"];
 
     if (type == WLRemoteActionPostType || type == WLRemoteActionPutType)
     {
-        [request setValue:"application/json; charset=utf-8" forHTTPHeaderField:@"Content-Type"];
+        [request setValue:contentType forHTTPHeaderField:@"Content-Type"];
 
         if (payload)
         {
@@ -620,11 +643,11 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
 
             try
             {
-                [request setHTTPBody:[CPString JSONFromObject:convertedPayload]];
+                [request setHTTPBody:[self encodeRequestBody:convertedPayload]];
             }
             catch(err)
             {
-                // This indicates JSON.stringify failed on the given object.
+                // This indicates JSON.stringify or the delegate encoding method failed on the given object.
                 CPLog.error("Failed to convert payload: " + convertedPayload);
                 CPLog.error(err);
                 if (typeof(console) !== 'undefined')
@@ -638,7 +661,16 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
     if (authorizationHeader)
         [request setValue:authorizationHeader forHTTPHeaderField:@"Authorization"];
 
-    connection = [CPURLConnection connectionWithRequest:request delegate:self];
+    [self makeConnectionWithRequest:request];
+}
+
+/*!
+    Make the actual connection with a request created by makeRequest. This method
+    could be overriden to make advanced request modifications.
+*/
+- (CPURLConnection)makeConnectionWithRequest:(CPURLRequest)aRequest
+{
+    connection = [CPURLConnection connectionWithRequest:aRequest delegate:self];
 }
 
 - (void)connection:(CPURLConnection)aConnection didReceiveResponse:(CPURLResponse)aResponse
@@ -681,11 +713,11 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
         {
             try
             {
-                result = [data objectFromJSON];
+                result = [self decodeResponseBody:data];
             }
             catch(err)
             {
-                CPLog.error("Got invalid JSON in response.");
+                CPLog.error("Unable to decode response.");
                 error = 500;
             }
 
@@ -695,11 +727,12 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
             }
             else if (typeof result === 'undefined' || result === null)
             {
-                CPLog.error("Got empty response.");
+                CPLog.error("Received an empty response.");
                 error = 500;
             }
             else if (typeof result["error"] !== 'undefined')
             {
+                // TODO This is too specific. Should be up to the framework user to decide which fields, if any, represent errors.
                 if (result["error"] == 401)
                 {
                     // Login needed.
@@ -718,10 +751,12 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
     }
     else
     {
+        // PUT and DELETE should only have a response of "OK".
         if (data != "" && data != "OK" && data != "{}")
         {
-            result = (data ? [data objectFromJSON] : null);
+            result = [self decodeResponseBody:data];
 
+            // TODO This is too specific. Should be up to the framework user to decide which fields, if any, represent errors.
             if (typeof result !== 'undefined' && result !== null && typeof result["error"] !== 'undefined' && result["error"] == 401)
             {
                 // Login needed.
@@ -729,7 +764,7 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
             }
             else
             {
-                CPLog.error("Unexpected data: "+data);
+                CPLog.error("Unexpected data: " + data);
                 error = 500;
             }
         }
