@@ -243,11 +243,11 @@ var WLRemoteObjectByClassByPk = {},
                 remotePkName = [pkProperty remoteName];
             if (js[remotePkName] !== undefined)
             {
-                var value = js[remotePkName];
+                var _value = js[remotePkName];
                 if ([pkProperty valueTransformer])
-                    value = [[pkProperty valueTransformer] transformedValue:value];
+                    _value = [[pkProperty valueTransformer] transformedValue:_value];
 
-                var existingObject = [[self class] instanceForPk:value];
+                var existingObject = [[self class] instanceForPk:_value];
 
                 if (existingObject)
                 {
@@ -461,11 +461,11 @@ var WLRemoteObjectByClassByPk = {},
     var remoteName = [aProperty remoteName];
     if (js[remoteName] !== undefined)
     {
-        var value = js[remoteName],
+        var _value = js[remoteName],
             localName = [aProperty localName];
         if ([aProperty valueTransformer])
-            value = [[aProperty valueTransformer] transformedValue:value];
-        [self setValue:value forKey:localName];
+            _value = [[aProperty valueTransformer] transformedValue:_value];
+        [self setValue:_value forKey:localName];
         [_deferredProperties removeObject:aProperty];
     }
 }
@@ -478,10 +478,10 @@ var WLRemoteObjectByClassByPk = {},
 
     while (property = [objectEnumerator nextObject])
     {
-        var value = [self valueForKey:[property localName]];
+        var _value = [self valueForKey:[property localName]];
         if ([property valueTransformer] && [[[property valueTransformer] class] allowsReverseTransformation])
-            value = [[property valueTransformer] reverseTransformedValue:value];
-        r[[property remoteName]] = value;
+            _value = [[property valueTransformer] reverseTransformedValue:_value];
+        r[[property remoteName]] = _value;
     }
 
     return r;
