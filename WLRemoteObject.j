@@ -688,21 +688,23 @@ var WLRemoteObjectByClassByPk = {},
 
 - (void)remoteActionDidReceivePostData:(Object)aResult
 {
-    // Make sure we get the new PK, but only the PK. If we update the
-    // rest we'll get a bunch of empty information which may overwrite
-    // changes the user is in the process of making.
-    [self updateFromJson:aResult remoteProperty:[self remotePropertyForKey:"pk"]];
+    [WLRemoteObject setDirtProof:YES];
+    [[self undoManager] disableUndoRegistration];
+    // Take any data received from the POST and update the object correspondingly -
+    // in particular we need the primary key that was generated. But at the same time
+    // we don't want to overwrite any changes the user made while the POST was happening,
+    // so we preserve dirty properties here.
+    [self updateFromJson:aResult preservingDirtyProperties:YES];
+    [[self undoManager] enableUndoRegistration];
+    [WLRemoteObject setDirtProof:NO];
 }
 
 - (void)remoteActionDidFinish:(WLRemoteAction)anAction
 {
     if ([anAction type] == WLRemoteActionPostType)
     {
-        [WLRemoteObject setDirtProof:YES];
-        [[self undoManager] disableUndoRegistration];
         [self remoteActionDidReceivePostData:[anAction result]];
-        [[self undoManager] enableUndoRegistration];
-        [WLRemoteObject setDirtProof:NO];
+
         createAction = nil;
         if ([_delegate respondsToSelector:@selector(remoteObjectWasCreated:)])
             [_delegate remoteObjectWasCreated:self];
