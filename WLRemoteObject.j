@@ -31,6 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+@import "WLRemoteLink.j"
+
 var WLRemoteObjectByClassByPk = {},
     WLRemoteObjectDirtProof = NO;
 
