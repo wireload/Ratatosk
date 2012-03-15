@@ -34,6 +34,7 @@
 @import "WLRemoteObject.j"
 @import "WLRemoteLink.j"
 @import "WLRemoteObjectTest.j"
+@import "jxon.js"
 
 var lastAction,
     lastRequest;
@@ -69,13 +70,37 @@ var lastAction,
     [self assert:@"semla" equals:[testObject pastry] message:@"pastry field should be set by custom decoder"];
 }
 
+/*!
+    Use custom encoding and decoding to read and write to an XML based API.
+*/
+- (void)testXml
+{
+    var testObject = [[XmlContentTypeObject alloc] initWithJson:{'id': nil, 'name': 'actionTest'}];
+    [testObject ensureCreated];
+    [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
+    // Check that the request has been specially encoded.
+
+    [self assert:@"application/xml; charset=utf-8" equals:[lastRequest valueForHTTPHeaderField:@"Accept"]];
+    [self assert:@"application/xml; charset=utf-8" equals:[lastRequest valueForHTTPHeaderField:@"Content-Type"]];
+    [self assert:'<xml><id/><name>actionTest</name><count>5</count><other_objects/><pastry/><weasel>45</weasel></xml>' equals:[lastRequest HTTPBody]];
+
+    // Now simulate a response.
+    var aResponse = [[CPHTTPURLResponse alloc] initWithURL:nil];
+    [aResponse _setStatusCode:200];
+    [lastAction connection:nil didReceiveResponse:aResponse];
+    [lastAction connection:nil didReceiveData:'<xml><id>10</id><name>randomChange</name><count>5</count><other_objects/><pastry/><weasel>45</weasel></xml>'];
+
+    [self assert:10 equals:[testObject pk] message:@"pk field should have been updated"];
+    [self assert:@"randomChange" equals:[testObject name] message:@"name field should have been updated"];
+    [self assert:@"semla" equals:[testObject pastry] message:@"pastry field should be set by custom decoder"];
+}
+
 @end
 
 @implementation CustomContentTypeObject : TestRemoteObject
 {
     CPString pastry @accessors;
 }
-
 
 + (CPArray)remoteProperties
 {
@@ -107,6 +132,45 @@ var lastAction,
 }
 
 @end
+
+@implementation XmlContentTypeObject : TestRemoteObject
+{
+    CPString pastry @accessors;
+}
+
+
++ (CPArray)remoteProperties
+{
+    return [[super remoteProperties] arrayByAddingObject:['pastry']];
+}
+
+- (CPString)remoteActionContentType:(WLRemoteAction)anAction
+{
+    return @"application/xml; charset=utf-8";
+}
+
+- (CPString)remoteAction:(WLRemoteAction)anAction encodeRequestBody:(Object)aRequestBody
+{
+    //CPLog.error("remoteAction: " + anAction + " encodeRequestBody: " + aRequestBody);
+    aRequestBody['weasel'] = 45;
+    return JXON.toXML(aRequestBody);
+}
+
+- (CPString)remoteAction:(WLRemoteAction)anAction decodeResponseBody:(Object)aResponseBody
+{
+    var r = JXON.fromXML(aResponseBody)['xml'];
+    // CPLog.error("got " + JSON.stringify(r));
+    r['pastry'] = 'semla';
+    return r;
+}
+
+- (CPString)description
+{
+    return "<XmlContentTypeObject " + [self UID] + " " + [self pk] + " " + [self name] + " pastry: " + [self pastry] + ">";
+}
+
+@end
+
 
 @implementation WLRemoteAction (UnitTest)
 

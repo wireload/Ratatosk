@@ -645,6 +645,8 @@ var WLRemoteObjectByClassByPk = {},
 
         [anAction setPayload:[self asPostJSObject]];
         // Assume the action will succeed or retry until it does.
+        // FIXME lastSyncedAt should be replaced with a static change counter since a sync and
+        // a modification might happen in the same second.
         [self setLastSyncedAt:[CPDate date]];
     }
     else if ([anAction type] == WLRemoteActionDeleteType)
