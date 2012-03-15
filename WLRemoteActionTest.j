@@ -95,6 +95,32 @@ var lastAction,
     [self assert:@"semla" equals:[testObject pastry] message:@"pastry field should be set by custom decoder"];
 }
 
+/*!
+    Test the XML sample code.
+*/
+- (void)testXmlExample
+{
+    var someMoney = [XmlMoneyResource new];
+    [someMoney setValue:95];
+    [someMoney setCurrency:@"GBP"];
+    [someMoney ensureCreated];
+
+    [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
+    // Check that the request has been specially encoded.
+
+    [self assert:@"application/xml; charset=utf-8" equals:[lastRequest valueForHTTPHeaderField:@"Accept"]];
+    [self assert:@"application/xml; charset=utf-8" equals:[lastRequest valueForHTTPHeaderField:@"Content-Type"]];
+    [self assert:'<money currency="GBP"><id/><value>95</value></money>' equals:[lastRequest HTTPBody]];
+
+    var aResponse = [[CPHTTPURLResponse alloc] initWithURL:nil];
+    [aResponse _setStatusCode:200];
+    [lastAction connection:nil didReceiveResponse:aResponse];
+    [lastAction connection:nil didReceiveData:'<money currency="EUR"><id/><value>75</value></money>'];
+
+    [self assert:75 equals:[someMoney value] message:@"updated value"];
+    [self assert:@"EUR" equals:[someMoney currency] message:@"updated currency"];
+}
+
 @end
 
 @implementation CustomContentTypeObject : TestRemoteObject
@@ -171,6 +197,38 @@ var lastAction,
 
 @end
 
+@implementation XmlMoneyResource : WLRemoteObject
+{
+    float    value @accessors;
+    CPString currency @accessors;
+}
+
++ (CPArray)remoteProperties
+{
+    return [
+        ['pk', 'id'],
+        ['value'],
+        ['currency', '@currency']
+    ];
+}
+
+- (CPString)remoteActionContentType:(WLRemoteAction)anAction
+{
+    return @"application/xml; charset=utf-8";
+}
+
+- (CPString)remoteAction:(WLRemoteAction)anAction encodeRequestBody:(Object)aRequestBody
+{
+    return JXON.toXML(aRequestBody, "money");
+}
+
+- (CPString)remoteAction:(WLRemoteAction)anAction decodeResponseBody:(Object)aResponseBody
+{
+    var r = JXON.fromXML(aResponseBody)['money'];
+    return r;
+}
+
+@end
 
 @implementation WLRemoteAction (UnitTest)
 
