@@ -753,7 +753,14 @@ var WLRemoteObjectByClassByPk = {},
         [[self undoManager] enableUndoRegistration];
         [WLRemoteObject setDirtProof:NO];
         contentDownloadAction = nil;
+        [self remoteObjectWasLoaded];
     }
+}
+
+- (void)remoteObjectWasLoaded
+{
+    if ([_delegate respondsToSelector:@selector(remoteObjectWasLoaded:)])
+        [_delegate remoteObjectWasLoaded:self];
 }
 
 - (void)remoteObjectWasDeleted
