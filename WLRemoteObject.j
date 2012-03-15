@@ -58,8 +58,10 @@ var WLRemoteObjectByClassByPk = {},
     id              pk @accessors;
 
     CPSet           _remoteProperties;
-    Object          _propertyLastModified;
+    Object          _propertyLastRevision;
     CPSet           _deferredProperties;
+    int             _revision;
+    int             _lastSyncedRevision;
     CPDate          lastSyncedAt @accessors;
     WLRemoteAction  createAction;
     WLRemoteAction  deleteAction;
@@ -190,9 +192,11 @@ var WLRemoteObjectByClassByPk = {},
 {
     if (self = [super init])
     {
+        _revision = 0;
+        _lastSyncedRevision = -1;
         _shouldAutoSave = YES;
         _remoteProperties = [CPSet set];
-        _propertyLastModified = {};
+        _propertyLastRevision = {};
         _deferredProperties = [CPSet set];
         lastSyncedAt = [CPDate distantPast];
 
@@ -334,12 +338,12 @@ var WLRemoteObjectByClassByPk = {},
 
 - (void)cleanAll
 {
-    _propertyLastModified = {};
+    _propertyLastRevision = {};
 }
 
 - (void)cleanProperty:(CPString)localName
 {
-    delete _propertyLastModified[localName];
+    delete _propertyLastRevision[localName];
 }
 
 - (void)makeAllDirty
@@ -357,7 +361,7 @@ var WLRemoteObjectByClassByPk = {},
     if (WLRemoteObjectDirtProof)
         return;
 
-    _propertyLastModified[localName] = [CPDate date];
+    _propertyLastRevision[localName] = ++_revision;
     if (!_suppressAutoSave && ![self isNew] && _shouldAutoSave)
     {
         // Run the check for whether we should autosave at the end of the
@@ -378,7 +382,7 @@ var WLRemoteObjectByClassByPk = {},
     if (property == nil)
         [CPException raise:CPInvalidArgumentException reason:@"Unknown property " + localName + "."];
 
-    delete _propertyLastModified[localName];
+    delete _propertyLastRevision[localName];
     [_deferredProperties addObject:property];
 }
 
@@ -396,7 +400,7 @@ var WLRemoteObjectByClassByPk = {},
     while (property = [objectEnumerator nextObject])
     {
         var localName = [property localName];
-        if (_propertyLastModified[localName] && _propertyLastModified[localName] >= lastSyncedAt)
+        if (_propertyLastRevision[localName] && _propertyLastRevision[localName] > _lastSyncedRevision)
             [r addObject:property];
     }
     return r;
@@ -417,7 +421,7 @@ var WLRemoteObjectByClassByPk = {},
 
 - (BOOL)isPropertyDirty:(CPString)localName
 {
-    return _propertyLastModified[localName] && _propertyLastModified[localName] >= lastSyncedAt;
+    return _propertyLastRevision[localName] && _propertyLastRevision[localName] > _lastSyncedRevision;
 }
 
 - (void)setPk:(id)aPk
@@ -645,9 +649,8 @@ var WLRemoteObjectByClassByPk = {},
 
         [anAction setPayload:[self asPostJSObject]];
         // Assume the action will succeed or retry until it does.
-        // FIXME lastSyncedAt should be replaced with a static change counter since a sync and
-        // a modification might happen in the same second.
         [self setLastSyncedAt:[CPDate date]];
+        _lastSyncedRevision = _revision;
     }
     else if ([anAction type] == WLRemoteActionDeleteType)
     {
@@ -660,6 +663,7 @@ var WLRemoteObjectByClassByPk = {},
         [anAction setPayload:nil];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
+        _lastSyncedRevision = _revision;
         [anAction setPath:[self deletePath]];
     }
     else if ([anAction type] == WLRemoteActionPutType)
@@ -674,6 +678,7 @@ var WLRemoteObjectByClassByPk = {},
         [anAction setPayload:[self asPostJSObject]];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
+        _lastSyncedRevision = _revision;
         [anAction setPath:[self putPath]];
     }
     else if ([anAction type] == WLRemoteActionGetType)
