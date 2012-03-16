@@ -644,6 +644,15 @@ var WLRemoteObjectByClassByPk = {},
     if ([_deferredProperties count] == 0 || contentDownloadAction !== nil)
         return;
 
+    [self reload];
+}
+
+/*!
+    Reload the properties of this resource from the server. Also see `ensureLoaded` which only causes the resource to
+    be retrieved if it hasn't already been fully downloaded.
+*/
+- (void)reload
+{
     // Path might not be known yet. A load can be scheduled before the object has been created. The path will be
     // set in remoteActionWillBegin when the path must be known.
     contentDownloadAction = [WLRemoteAction schedule:WLRemoteActionGetType path:nil delegate:self message:"Loading " + [self description]];
