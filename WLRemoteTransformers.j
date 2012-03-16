@@ -177,6 +177,12 @@ var IsNumberRegExp = new RegExp('^\d+$');
 {
     var r = [];
 
+    if (!values)
+        return nil;
+
+    if (!values.isa || ![values isKindOfClass:CPArray])
+        [CPException raise:CPInvalidArgumentException reason:"WLForeignObjectsTransformer expects arrays"];
+
     for (var i = 0, count = [values count]; i < count; i++)
     {
         obj = [super transformedValue:values[i]];
