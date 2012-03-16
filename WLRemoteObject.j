@@ -189,8 +189,7 @@ var WLRemoteObjectByClassByPk = {},
     return r;
 }
 
-
-- (void)init
+- (id)init
 {
     if (self = [super init])
     {
