@@ -216,6 +216,28 @@ var IsNumberRegExp = new RegExp('^\d+$');
 
 
 /*!
+    Like WLForeignObjectsTransformer but if a value turns out not to be
+    an array, assume it's a single instance of the foreign object.
+*/
+@implementation WLForeignObjectOrObjectsTransformer : WLForeignObjectsTransformer
+{
+}
+
+- (id)transformedValue:(id)values
+{
+    if (!values)
+        return nil;
+
+    if (!values.isa || ![values isKindOfClass:CPArray])
+        values = [values];
+
+    return [super transformedValue:values];
+}
+
+@end
+
+
+/*!
     Instantiate foreign objects using a primary key value as a string only. If the
     object is in the register, it will be used, otherwise a new unloaded object
     will be created (which can then be sent ensureLoaded to load fully.)
