@@ -20,6 +20,33 @@ Features:
 
 To be written. In the meantime, please see the source documentation and the unit tests.
 
+## Auto Loading ##
+
+If an object has a relationship to another object, you might want to automatically send `ensureLoaded` to that other object when discovered. You can do that with the auto loading features. Assuming you have another remote object called `User`, you could:
+
+    @implementation BlogPost : WLRemoteObject
+    {
+        User owner @accessors;
+    }
+
+    + (CPArray)remoteProperties
+    {
+        return [
+            ['pk', 'id'],
+            ['owner', 'owner_id', [WLForeignObjectByIdTransformer forObjectClass:User]]
+        ];
+    }
+
+    + (BOOL)automaticallyLoadsRemoteObjectsForUser
+    {
+        // Whenever `owner` is set, automatically  send `[owner ensureLoaded]`.
+        return YES;
+    }
+
+    @end
+
+Note that even with auto loading you will want to use observation or bindings for actually displaying values from the `owner` relationship. It will immediately be scheduled for loading, but loading is still asynchronous and could finish much later than the loading of the `BlogPost` itself.
+
 ## XML based APIs and other non-JSON APIs ##
 While Ratatosk is meant for JSON based APIs you can provide your own per resource encoding and decoding support, which should take JSON and transform it to the appropriate format, and then take the response and turn it back into JSON.
 
