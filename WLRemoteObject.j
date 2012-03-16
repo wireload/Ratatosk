@@ -70,6 +70,7 @@ var WLRemoteObjectByClassByPk = {},
     WLRemoteAction  saveAction;
     WLRemoteAction  contentDownloadAction;
     BOOL            _shouldAutoSave @accessors(property=shouldAutoSave);
+    BOOL            _shouldAutoLoad @accessors(property=shouldAutoLoad);
     BOOL            _suppressAutoSave;
     BOOL            _suppressRemotePropertiesObservation;
     BOOL            _mustSaveAgain;
@@ -189,6 +190,21 @@ var WLRemoteObjectByClassByPk = {},
     return r;
 }
 
+/*!
+    When shouldAutoLoad is YES and this method returns YES for a property, any remote
+    object set to that property will have `ensureLoaded` automatically called.
+*/
++ (BOOL)automaticallyLoadsRemoteObjectsForKey:(CPString)aLocalName
+{
+    var capitalizedName = aLocalName.charAt(0).toUpperCase() + aLocalName.substring(1),
+        selector = "automaticallyLoadsRemoteObjectsFor" + capitalizedName;
+
+    if ([[self class] respondsToSelector:selector])
+        return objj_msgSend([self class], selector);
+
+    return NO;
+}
+
 - (id)init
 {
     if (self = [super init])
@@ -196,6 +212,7 @@ var WLRemoteObjectByClassByPk = {},
         _revision = 0;
         _lastSyncedRevision = -1;
         _shouldAutoSave = YES;
+        _shouldAutoLoad = YES;
         _remoteProperties = [CPSet set];
         _propertyLastRevision = {};
         _deferredProperties = [CPSet set];
@@ -320,6 +337,11 @@ var WLRemoteObjectByClassByPk = {},
         [self addObserver:self forKeyPath:[property localName] options:nil context:property];
     }
 }
+- (void)_autoLoad:(CPObject)anObject
+{
+    if ([anObject respondsToSelector:@selector(ensureLoaded)])
+        [anObject ensureLoaded];
+}
 
 - (void)observeValueForKeyPath:(CPString)aKeyPath ofObject:(id)anObject change:(CPDictionary)change context:(id)aContext
 {
@@ -330,10 +352,22 @@ var WLRemoteObjectByClassByPk = {},
     if ([change valueForKey:CPKeyValueChangeKindKey] == CPKeyValueChangeSetting && [_remoteProperties containsObject:aContext])
     {
         var before = [change valueForKey:CPKeyValueChangeOldKey],
-            after = [change valueForKey:CPKeyValueChangeNewKey];
+            after = [change valueForKey:CPKeyValueChangeNewKey],
+            localName = [aContext localName];
         if (before !== after && ((before === nil && after !== nil) || ![before isEqual:after]))
-            [self makeDirtyProperty:[aContext localName]];
+            [self makeDirtyProperty:localName];
         [_deferredProperties removeObject:aContext];
+
+        if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
+        {
+            if ([after isKindOfClass:[CPArray class]])
+                [after enumerateObjectsUsingBlock:function(anObject)
+                    {
+                        [self _autoLoad:anObject];
+                    }];
+            else
+                [self _autoLoad:after];
+        }
     }
 }
 
