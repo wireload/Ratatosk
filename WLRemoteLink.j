@@ -90,6 +90,11 @@ WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
     DefaultBaseUrl = anApiUrl;
 }
 
++ (CPString)DefaultBaseURL
+{
+    return DefaultBaseUrl;
+}
+
 /*!
     Returns the singleton instance of the WLRemoteLink.
 */
