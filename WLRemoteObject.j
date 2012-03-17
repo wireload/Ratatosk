@@ -727,12 +727,6 @@ var WLRemoteObjectByClassByPk = {},
     }
     else if ([anAction type] == WLRemoteActionGetType)
     {
-        if (!pk)
-        {
-            CPLog.error("Attempt to download non created entry " + [self description]);
-            return;
-        }
-
         [anAction setPath:[self getPath]];
     }
 }
