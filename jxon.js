@@ -23,8 +23,10 @@ JXON.buildValue = function(sValue)
         return sValue.toLowerCase() === "true";
     if (isFinite(sValue))
         return parseFloat(sValue);
-    if (isFinite(Date.parse(sValue)))
-        return new Date(sValue);
+    // Don't do this - it'll parse anything that looks like a date and get the timezone wrong.
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=693077
+    //if (isFinite(Date.parse(sValue)))
+    //    return new Date(sValue);
     return sValue;
 };
 
