@@ -424,22 +424,22 @@ WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
     @global
     @group WLRemoteActionType
 */
-WLRemoteActionGetType         = 0;
+WLRemoteActionGetType         = @"GET";
 /*
     @global
     @group WLRemoteActionType
 */
-WLRemoteActionPostType        = 1;
+WLRemoteActionPostType        = @"POST";
 /*
     @global
     @group WLRemoteActionType
 */
-WLRemoteActionPutType         = 2;
+WLRemoteActionPutType         = @"PUT";
 /*
     @global
     @group WLRemoteActionType
 */
-WLRemoteActionDeleteType      = 3;
+WLRemoteActionDeleteType      = @"DELETE";
 
 /*
 For a later potential bitmask optimization.
@@ -448,9 +448,7 @@ var WLRemoteActionDelegate_remoteAction_willBegin             = 1 << 0,
     WLRemoteActionDelegate_remoteAction_didFinish             = 1 << 1;
 */
 
-var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
-
-    WLRemoteActionSerial = 1;
+var WLRemoteActionSerial = 1;
 
 @implementation WLRemoteAction : CPObject
 {
@@ -624,7 +622,7 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
     var request = [CPURLRequest requestWithURL:[self fullPath]],
         contentType = [self contentType];
 
-    [request setHTTPMethod:WLRemoteActionTypeNames[type]];
+    [request setHTTPMethod:type];
     [request setValue:contentType forHTTPHeaderField:@"Accept"];
 
     if (type == WLRemoteActionPostType || type == WLRemoteActionPutType)
@@ -829,7 +827,7 @@ var WLRemoteActionTypeNames = ["GET", "POST", "PUT", "DELETE"],
 
 - (CPString)description
 {
-    return "<WLRemoteAction " + serial + " " + WLRemoteActionTypeNames[type] + " " + [self fullPath] + " " + payload + ">";
+    return "<WLRemoteAction " + serial + " " + type + " " + [self fullPath] + " " + payload + ">";
 }
 
 @end
