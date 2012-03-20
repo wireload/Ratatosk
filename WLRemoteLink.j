@@ -390,9 +390,13 @@ WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
     return actionQueue;
 }
 
-- (void)emptyActionQueue
+- (void)cancelAllActions
 {
-    [actionQueue removeAllObjects];
+    [[actionQueue copy] enumerateObjectsUsingBlock:function(anAction)
+    {
+        if (![anAction isStarted])
+            [anAction cancel];
+    }];
 }
 
 /*!
