@@ -819,7 +819,8 @@ var WLRemoteActionSerial = 1;
 
 - (CPString)fullPath
 {
-    if (path && path.toLowerCase().substring(0, 4) == 'http')
+    var opening = path && path.toLowerCase().substring(0, 7);
+    if (opening && (opening == 'http://' || opening == 'https:/' || opening == 'file://'))
         return path;
 
     var baseUrl = [[WLRemoteLink sharedRemoteLink] baseUrl];
