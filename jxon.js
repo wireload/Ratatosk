@@ -111,11 +111,11 @@ JXON.loadObj = function(oParentObj, oParentEl, oNewDoc)
             else if (vValue && vValue.constructor === Array)
             {
                 for (nSameIdx = 0; nSameIdx < vValue.length; nSameIdx++)
-                    loadObj(vValue[nSameIdx], oChild);
+                    JXON.loadObj(vValue[nSameIdx], oChild);
             }
             else if (vValue && vValue instanceof Object)
             {
-                loadObj(vValue, oChild, oNewDoc);
+                JXON.loadObj(vValue, oChild, oNewDoc);
             }
             else if (vValue !== null && vValue !== true)
                 oChild.appendChild(oNewDoc.createTextNode(vValue.toString()));
