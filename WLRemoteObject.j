@@ -582,7 +582,7 @@ var WLRemoteObjectByClassByPk = {},
 
 - (BOOL)isNew
 {
-    return pk === nil;
+    return pk === nil || pk === undefined;
 }
 
 /*!
@@ -641,7 +641,7 @@ var WLRemoteObjectByClassByPk = {},
 
 - (void)ensureLoaded
 {
-    if ([_deferredProperties count] == 0 || contentDownloadAction !== nil)
+    if ([self isNew] || [_deferredProperties count] == 0 || contentDownloadAction !== nil)
         return;
 
     [self reload];
