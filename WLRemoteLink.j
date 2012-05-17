@@ -66,6 +66,7 @@ WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
 */
 @implementation WLRemoteLink : CPObject
 {
+    id          _delegate @accessors(property=delegate);
     CPArray     actionQueue;
     CPString    baseUrl @accessors;
     int         updateDelay;
@@ -238,6 +239,13 @@ WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
 - (void)remoteActionDidFail:(WLRemoteAction)anAction dueToAuthentication:(BOOL)dueToAuthentication
 {
     CPLog.error("Action failed " + anAction);
+
+    // Tell the delegate an action has failed
+    if ([_delegate respondsToSelector:@selector(remoteActionDidFail:dueToAuthentication:)])
+    {
+        [_delegate remoteActionDidFail:anAction dueToAuthentication:dueToAuthentication];
+    }
+
     // Ready the action for a later retry.
     [anAction reset];
 
@@ -273,6 +281,13 @@ WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
 - (void)remoteActionDidFinish:(WLRemoteAction)anAction
 {
     //CPLog.info("Remote op finished: "+[anAction description]);
+
+    // Tell the delegate an action has finished
+    if ([_delegate respondsToSelector:@selector(remoteActionDidFinish:)])
+    {
+        [_delegate remoteActionDidFinish:anAction];
+    }
+
 
     var actionIndex = [actionQueue indexOfObject:anAction];
     if (actionIndex == CPNotFound && ![anAction isLoginAction])
