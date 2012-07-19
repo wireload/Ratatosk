@@ -470,7 +470,7 @@ var WLRemoteActionSerial = 1;
     int                 statusCode @accessors;
     JSObject            result @accessors;
     CPString            message @accessors;
-    CPString            error;
+    CPString            error @accessors(readonly);
 }
 
 + (WLRemoteAction)schedule:(WLRemoteActionType)aType path:(CPString)aPath delegate:(id)aDelegate message:(CPString)aMessage
@@ -734,18 +734,6 @@ var WLRemoteActionSerial = 1;
                 CPLog.error("Received an empty response.");
                 error = 500;
             }
-            else if (typeof result["error"] !== 'undefined')
-            {
-                // TODO This is too specific. Should be up to the framework user to decide which fields, if any, represent errors.
-                if (result["error"] == 401)
-                {
-                    // Login needed.
-                    error = 401;
-                } else {
-                    CPLog.error("Got error: " + result["error"] + ": " + result["message"]);
-                    error = 500;
-                }
-            }
         }
         else
         {
@@ -758,19 +746,8 @@ var WLRemoteActionSerial = 1;
         // PUT and DELETE should only have a response of "OK".
         if (data != "" && data != "OK" && data != "{}")
         {
-            result = [self decodeResponseBody:data];
-
-            // TODO This is too specific. Should be up to the framework user to decide which fields, if any, represent errors.
-            if (typeof result !== 'undefined' && result !== null && typeof result["error"] !== 'undefined' && result["error"] == 401)
-            {
-                // Login needed.
-                error = 401;
-            }
-            else
-            {
-                CPLog.error("Unexpected data: " + data);
-                error = 500;
-            }
+            CPLog.error("Unexpected data in response: " + data);
+            error = 500;
         }
     }
 
