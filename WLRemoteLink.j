@@ -197,9 +197,9 @@ WLRemoteLinkStateRequestFailureError    = 2;
     }
 
     var indexes = [CPIndexSet indexSetWithIndex:i];
-    [self willChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:"actionQueue"];
+    [self willChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:"actionQueue"];
     [actionQueue removeObject:anAction];
-    [self didChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:"actionQueue"];
+    [self didChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:"actionQueue"];
 
     if ([anAction isSaveAction])
         [self _updateHasSaveActions];
