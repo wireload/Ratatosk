@@ -816,7 +816,7 @@ var WLRemoteActionSerial = 1;
 
 - (CPString)fullPath
 {
-    var opening = path && path.toLowerCase().substring(0, 7);
+    var opening = path && String(path).toLowerCase().substring(0, 7);
     if (opening && (opening == 'http://' || opening == 'https:/' || opening == 'file://'))
         return path;
 
