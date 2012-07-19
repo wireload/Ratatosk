@@ -39,9 +39,6 @@ WLRemoteLinkStateNormal                 = 0;
 WLRemoteLinkStateAuthenticationError    = 1;
 WLRemoteLinkStateRequestFailureError    = 2;
 
-WLLoginActionDidSucceedNotification     = "WLLoginDidSucceedNotification";
-WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
-
 /*!
     A link to the server side API where the RemoteObjects live. WLRemoteLink does the following:
 
@@ -82,7 +79,7 @@ WLLoginActionDidFailNotification        = "WLLoginDidFailNotification";
     BOOL        _retryOneAction;
     int         state @accessors;
 
-    CPString     authorizationHeader @accessors;
+    CPString    authorizationHeader @accessors;
 }
 
 + (void)setDefaultBaseURL:(CPString)anApiUrl
