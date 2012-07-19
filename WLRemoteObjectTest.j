@@ -161,6 +161,36 @@
     [self assertFalse:[test2 isDirty] message:"test2 isDirty after clean"];
 }
 
+- (void)testKeepActionPath
+{
+    // Normally a remote object will set its action path at the last moment in remoteActionWillBegin:,
+    // rather than when first setting up the action, to give the path time to be changed by the result
+    // of previous actions. However, if the action does not belong to the remote object, if it's just
+    // an unrelated action which happens to have the remote object as its delegate, the remote object
+    // shouldn't overwrite the path of the action.
+
+    var test1 = [[TestRemoteObject alloc] initWithJson:{'id': 1, 'name': 'test2 name', 'other_objects':[{'id': 5, 'coolness': 17}, {'id': 9}]}],
+        testAction = [WLRemoteAction schedule:WLRemoteActionGetType path:"somepath.json" delegate:test1 message:"Loading..."];
+
+    [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
+
+    [self assert:@"somepath.json" equals:[testAction path] message:@"remote path of unrelated action not changed"];
+
+    [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:NO];
+    [[WLRemoteLink sharedRemoteLink] cancelAllActions];
+
+    // When the remote action is managing its action it should set the path.
+    [test1 setName:@"other name"];
+    [test1 ensureSaved];
+    CPLog.error([WLRemoteLink sharedRemoteLink].actionQueue);
+
+    [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
+
+    var lastAction = [WLRemoteAction lastAction];
+    [self assert:testAction notSame:lastAction];
+    [self assert:1 equals:[lastAction path] message:@"remote path of ensureSaved successfully set"];
+}
+
 @end
 
 @implementation TestRemoteObject : WLRemoteObject
@@ -212,6 +242,31 @@
 - (CPString)description
 {
     return "OtherRemoteObject: " + [self UID] + " " + [self pk];
+}
+
+@end
+
+var _lastAction,
+    _lastRequest;
+
+@implementation WLRemoteAction (UnitTest)
+
++ (WLRemoteAction)lastAction
+{
+    return _lastAction;
+}
+
++ (CPURLRequest)lastRequest
+{
+    return _lastRequest;
+}
+
+- (CPURLConnection)makeConnectionWithRequest:(CPURLRequest)aRequest
+{
+    // CPLog.error(self + " makeConnection: " + aRequest);
+    _lastAction = self;
+    _lastRequest = aRequest;
+    // Don't actually send anything.
 }
 
 @end
