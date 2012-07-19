@@ -66,8 +66,8 @@ var WLRemoteObjectByClassByPk = {},
     int             _lastSyncedRevision;
     CPDate          lastSyncedAt @accessors;
     WLRemoteAction  createAction;
-    WLRemoteAction  deleteAction;
     WLRemoteAction  saveAction;
+    WLRemoteAction  deleteAction;
     WLRemoteAction  contentDownloadAction;
     BOOL            _shouldAutoSave @accessors(property=shouldAutoSave);
     BOOL            _shouldAutoLoad @accessors(property=shouldAutoLoad);
@@ -683,7 +683,7 @@ var WLRemoteObjectByClassByPk = {},
 
 - (void)remoteActionWillBegin:(WLRemoteAction)anAction
 {
-    if ([anAction type] == WLRemoteActionPostType)
+    if (anAction === createAction)
     {
         if (pk)
         {
@@ -696,7 +696,7 @@ var WLRemoteObjectByClassByPk = {},
         [self setLastSyncedAt:[CPDate date]];
         _lastSyncedRevision = _revision;
     }
-    else if ([anAction type] == WLRemoteActionDeleteType)
+    else if (anAction === deleteAction)
     {
         if (pk === nil)
         {
@@ -710,7 +710,7 @@ var WLRemoteObjectByClassByPk = {},
         _lastSyncedRevision = _revision;
         [anAction setPath:[self deletePath]];
     }
-    else if ([anAction type] == WLRemoteActionPutType)
+    else if (anAction === saveAction)
     {
         if (!pk)
         {
@@ -725,7 +725,7 @@ var WLRemoteObjectByClassByPk = {},
         _lastSyncedRevision = _revision;
         [anAction setPath:[self putPath]];
     }
-    else if ([anAction type] == WLRemoteActionGetType)
+    else if (anAction === contentDownloadAction)
     {
         [anAction setPath:[self getPath]];
     }
@@ -746,7 +746,7 @@ var WLRemoteObjectByClassByPk = {},
 
 - (void)remoteActionDidFinish:(WLRemoteAction)anAction
 {
-    if ([anAction type] == WLRemoteActionPostType)
+    if (anAction === createAction)
     {
         [self remoteActionDidReceivePostData:[anAction result]];
 
@@ -754,7 +754,7 @@ var WLRemoteObjectByClassByPk = {},
         if ([_delegate respondsToSelector:@selector(remoteObjectWasCreated:)])
             [_delegate remoteObjectWasCreated:self];
     }
-    else if ([anAction type] == WLRemoteActionDeleteType)
+    else if (anAction === deleteAction)
     {
         // The previous PK is now gone.
         [self setPk:nil];
@@ -771,7 +771,7 @@ var WLRemoteObjectByClassByPk = {},
         deleteAction = nil;
         [self remoteObjectWasDeleted];
     }
-    else if ([anAction type] == WLRemoteActionPutType)
+    else if (anAction === saveAction)
     {
         saveAction = nil;
         if (_mustSaveAgain)
@@ -780,7 +780,7 @@ var WLRemoteObjectByClassByPk = {},
             [self ensureSaved];
         }
     }
-    else if ([anAction type] == WLRemoteActionGetType)
+    else if (anAction === contentDownloadAction)
     {
         // Assume whatever was downloaded is the most current info, so nothing gets dirty.
         [WLRemoteObject setDirtProof:YES];

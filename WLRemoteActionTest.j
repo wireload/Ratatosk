@@ -36,9 +36,6 @@
 @import "WLRemoteObjectTest.j"
 @import "jxon.js"
 
-var lastAction,
-    lastRequest;
-
 @implementation WLRemoteActionTest : OJTestCase
 {
 }
@@ -55,6 +52,7 @@ var lastAction,
     [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
     // Check that the request has been specially encoded.
 
+    var lastRequest = [WLRemoteAction lastRequest];
     [self assert:@"application/clues; charset=runes" equals:[lastRequest valueForHTTPHeaderField:@"Accept"]];
     [self assert:@"application/clues; charset=runes" equals:[lastRequest valueForHTTPHeaderField:@"Content-Type"]];
     [self assert:'{"id":null,"name":"actionTest","count":5,"other_objects":[],"pastry":null,"weasel":45}' equals:[lastRequest HTTPBody]];
@@ -62,6 +60,7 @@ var lastAction,
     // Now simulate a response.
     var aResponse = [[CPHTTPURLResponse alloc] initWithURL:nil];
     [aResponse _setStatusCode:200];
+    var lastAction = [WLRemoteAction lastAction];
     [lastAction connection:nil didReceiveResponse:aResponse];
     [lastAction connection:nil didReceiveData:'{"id":10,"name":"randomChange","count":5,"other_objects":[],"pastry":null}'];
 
@@ -80,6 +79,7 @@ var lastAction,
     [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
     // Check that the request has been specially encoded.
 
+    var lastRequest = [WLRemoteAction lastRequest];
     [self assert:@"application/xml; charset=utf-8" equals:[lastRequest valueForHTTPHeaderField:@"Accept"]];
     [self assert:@"application/xml; charset=utf-8" equals:[lastRequest valueForHTTPHeaderField:@"Content-Type"]];
     [self assert:'<xml><id/><name>actionTest</name><count>5</count><other_objects/><pastry/><weasel>45</weasel></xml>' equals:[lastRequest HTTPBody]];
@@ -87,6 +87,7 @@ var lastAction,
     // Now simulate a response.
     var aResponse = [[CPHTTPURLResponse alloc] initWithURL:nil];
     [aResponse _setStatusCode:200];
+    var lastAction = [WLRemoteAction lastAction];
     [lastAction connection:nil didReceiveResponse:aResponse];
     [lastAction connection:nil didReceiveData:'<xml><id>10</id><name>randomChange</name><count>5</count><other_objects/><pastry/><weasel>45</weasel></xml>'];
 
@@ -108,12 +109,14 @@ var lastAction,
     [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
     // Check that the request has been specially encoded.
 
+    var lastRequest = [WLRemoteAction lastRequest];
     [self assert:@"application/xml; charset=utf-8" equals:[lastRequest valueForHTTPHeaderField:@"Accept"]];
     [self assert:@"application/xml; charset=utf-8" equals:[lastRequest valueForHTTPHeaderField:@"Content-Type"]];
     [self assert:'<money currency="GBP"><id/><value>95</value></money>' equals:[lastRequest HTTPBody]];
 
     var aResponse = [[CPHTTPURLResponse alloc] initWithURL:nil];
     [aResponse _setStatusCode:200];
+    var lastAction = [WLRemoteAction lastAction];
     [lastAction connection:nil didReceiveResponse:aResponse];
     [lastAction connection:nil didReceiveData:'<money currency="EUR"><id/><value>75</value></money>'];
 
@@ -226,18 +229,6 @@ var lastAction,
 {
     var r = JXON.fromXML(aResponseBody)['money'];
     return r;
-}
-
-@end
-
-@implementation WLRemoteAction (UnitTest)
-
-- (CPURLConnection)makeConnectionWithRequest:(CPURLRequest)aRequest
-{
-    // CPLog.error(self + " makeConnection: " + aRequest);
-    lastAction = self;
-    lastRequest = aRequest;
-    // Don't actually send anything.
 }
 
 @end
