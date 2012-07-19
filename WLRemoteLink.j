@@ -767,6 +767,17 @@ var WLRemoteActionSerial = 1;
 
     if (error)
     {
+        if ([_delegate respondsToSelector:@selector(remoteActionDidFail:)])
+            [_delegate remoteActionDidFail:self];
+
+        // The delegate might have cancelled the action as a response to the failure.
+        if (done)
+        {
+            // Give the next action a chance to go.
+            [[WLRemoteLink sharedRemoteLink] maybeExecute];
+            return;
+        }
+
         if (error == 401)
         {
             [[WLRemoteLink sharedRemoteLink] remoteActionDidFail:self dueToAuthentication:YES];
