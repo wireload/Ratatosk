@@ -236,7 +236,6 @@ var IsNumberRegExp = new RegExp('^\d+$');
 
 @end
 
-
 /*!
     Instantiate foreign objects using a primary key value as a string only. If the
     object is in the register, it will be used, otherwise a new unloaded object
@@ -278,4 +277,53 @@ var IsNumberRegExp = new RegExp('^\d+$');
 
 @end
 
+/*!
+    Like WLForeignObjectByIdTransformer but take a list of ids to populate an array
+    of remote objects. This could be used for an array of resource URIs for instance,
+    if the PK is the resource URI.
+*/
+@implementation WLForeignObjectsByIdsTransformer : WLForeignObjectByIdTransformer
+{
+}
+
++ (Class)transformedValueClass
+{
+    return [CPArray class];
+}
+
+- (id)transformedValue:(id)values
+{
+    if (!values)
+        return nil;
+
+    if (!values.isa || ![values isKindOfClass:CPArray])
+        [CPException raise:CPInvalidArgumentException reason:"WLForeignObjectsTransformer expects arrays"];
+
+    var r = [];
+    for (var i = 0, count = [values count]; i < count; i++)
+    {
+        obj = [super transformedValue:values[i]];
+        if (obj !== nil)
+            [r addObject:obj];
+    }
+
+    return r;
+}
+
+- (id)reverseTransformedValue:(id)values
+{
+    var r = [];
+
+    for (var i = 0, count = [values count]; i < count; i++)
+    {
+        var value = values[i],
+            repr = [super reverseTransformedValue:value];
+        if (repr)
+            [r addObject:repr];
+    }
+
+    return r;
+}
+
+@end
 
