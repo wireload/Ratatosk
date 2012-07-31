@@ -361,10 +361,7 @@ var WLRemoteObjectByClassByPk = {},
         if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
         {
             if ([after isKindOfClass:[CPArray class]])
-                [after enumerateObjectsUsingBlock:function(anObject)
-                    {
-                        [self _autoLoad:anObject];
-                    }];
+                [after makeObjectsPerformSelector:@selector(_autoLoad:) withObject:anObject];
             else
                 [self _autoLoad:after];
         }
