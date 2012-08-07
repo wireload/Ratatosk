@@ -134,7 +134,7 @@
     [self assertTrue:[r2 isPropertyDeferred:'coolness']];
 
     [test2 makeAllDirty];
-    var jso = [test2 asPostJSObject];
+    var jso = [test2 asPatchJSObject];
     //CPLog.warn([CPDictionary dictionaryWithJSObject:jso['other_objects']]);
 
     [self assertTrue:5 == jso['other_objects'][0]['id'] || 9 == jso['other_objects'][0]['id']];

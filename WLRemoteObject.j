@@ -59,7 +59,7 @@ var WLRemoteObjectByClassByPk = {},
 {
     id              pk @accessors;
 
-    CPSet           _remoteProperties;
+    CPSet           _remoteProperties @accessors(readonly, property=remoteProperties);
     Object          _propertyLastRevision;
     CPSet           _deferredProperties;
     int             _revision;
@@ -426,7 +426,7 @@ var WLRemoteObjectByClassByPk = {},
     return [[self dirtyProperties] count] > 0;
 }
 
-- (void)dirtyProperties
+- (CPSet)dirtyProperties
 {
     var r = [CPSet set],
         property = nil,
@@ -505,21 +505,31 @@ var WLRemoteObjectByClassByPk = {},
     }
 }
 
-- (id)asPostJSObject
+- (id)asJSObjectForProperties:(CPSet)someProperties
 {
-    var r = {},
-        property = nil,
-        objectEnumerator = [[self dirtyProperties] objectEnumerator];
+    var r = {};
 
-    while (property = [objectEnumerator nextObject])
-    {
-        var _value = [self valueForKey:[property localName]];
-        if ([property valueTransformer] && [[[property valueTransformer] class] allowsReverseTransformation])
-            _value = [[property valueTransformer] reverseTransformedValue:_value];
-        r[[property remoteName]] = _value;
-    }
+    [someProperties enumerateObjectsUsingBlock:function(aProperty)
+        {
+            var aValue = [self valueForKey:[aProperty localName]],
+                aValueTransformer = [aProperty valueTransformer];
+            if (aValueTransformer && [[aValueTransformer class] allowsReverseTransformation])
+                aValue = [aValueTransformer reverseTransformedValue:aValue];
+            r[[aProperty remoteName]] = aValue;
+        }
+    ];
 
     return r;
+}
+
+- (id)asPatchJSObject
+{
+    return [self asJSObjectForProperties:[self dirtyProperties]];
+}
+
+- (id)asJSObject
+{
+    return [self asJSObjectForProperties:[self remoteProperties]];
 }
 
 - (BOOL)isEqual:(id)anObject
@@ -691,7 +701,7 @@ var WLRemoteObjectByClassByPk = {},
             return;
         }
 
-        [anAction setPayload:[self asPostJSObject]];
+        [anAction setPayload:[self asJSObject]];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
         _lastSyncedRevision = _revision;
@@ -719,7 +729,7 @@ var WLRemoteObjectByClassByPk = {},
         }
 
         [anAction setMessage:"Saving " + [self description]];
-        [anAction setPayload:[self asPostJSObject]];
+        [anAction setPayload:[self asJSObject]];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
         _lastSyncedRevision = _revision;
