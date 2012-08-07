@@ -354,17 +354,14 @@ var WLRemoteObjectByClassByPk = {},
         var before = [change valueForKey:CPKeyValueChangeOldKey],
             after = [change valueForKey:CPKeyValueChangeNewKey],
             localName = [aContext localName];
-        if (before !== after && ((before === nil && after !== nil) || ![before isEqual:after]))
+        if (before !== after && ((before === nil || after === nil) || (before.isa && ![before isEqual:after])))
             [self makeDirtyProperty:localName];
         [_deferredProperties removeObject:aContext];
 
         if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
         {
             if ([after isKindOfClass:[CPArray class]])
-                [after enumerateObjectsUsingBlock:function(anObject)
-                    {
-                        [self _autoLoad:anObject];
-                    }];
+                [after makeObjectsPerformSelector:@selector(_autoLoad:) withObject:anObject];
             else
                 [self _autoLoad:after];
         }
