@@ -504,7 +504,7 @@ var WLRemoteObjectByClassByPk = {},
         // will be unchanged and we don't want expensive KVO notifications to go out needlessly.
         if (before !== after && ((before === nil && after !== nil) || ![before isEqual:after]))
         {
-            CPLog.debug("Updating property %@ from JSON (before: %@ after: %@)", localName, before, after);
+            // CPLog.debug("Updating property %@ from JSON (before: %@ after: %@)", localName, before, after);
             [self setValue:after forKey:localName];
         }
 
