@@ -496,11 +496,21 @@ var WLRemoteObjectByClassByPk = {},
     var remoteName = [aProperty remoteName];
     if (js[remoteName] !== undefined)
     {
-        var _value = js[remoteName],
+        var after = js[remoteName],
             localName = [aProperty localName];
         if ([aProperty valueTransformer])
-            _value = [[aProperty valueTransformer] transformedValue:_value];
-        [self setValue:_value forKey:localName];
+            after = [[aProperty valueTransformer] transformedValue:after];
+
+        var before = [self valueForKey:localName];
+        // Avoid calling setValue:forKey: if we just received the value we already have. This will
+        // happen frequently if PUT requests respond with the object representation - most fields
+        // will be unchanged and we don't want expensive KVO notifications to go out needlessly.
+        if (before !== after && ((before === nil && after !== nil) || ![before isEqual:after]))
+        {
+            CPLog.debug("Updating property %@ from JSON (before: %@ after: %@)", localName, before, after);
+            [self setValue:after forKey:localName];
+        }
+
         [_deferredProperties removeObject:aProperty];
     }
 }
@@ -741,14 +751,16 @@ var WLRemoteObjectByClassByPk = {},
     }
 }
 
-- (void)remoteActionDidReceivePostData:(Object)aResult
+- (void)remoteActionDidReceiveResourceRepresentation:(Object)aResult
 {
     [WLRemoteObject setDirtProof:YES];
     [[self undoManager] disableUndoRegistration];
-    // Take any data received from the POST and update the object correspondingly -
-    // in particular we need the primary key that was generated. But at the same time
-    // we don't want to overwrite any changes the user made while the POST was happening,
-    // so we preserve dirty properties here.
+    // Take any data received from the POST/PUT/PATCH and update the object correspondingly -
+    // in particular we might need any primary key that was generated. We could also get new
+    // data for updated_at style fields.
+
+    // At the same time we don't want to overwrite any changes the user made while the request
+    // was processing, so we preserve dirty properties here.
     [self updateFromJson:aResult preservingDirtyProperties:YES];
     [[self undoManager] enableUndoRegistration];
     [WLRemoteObject setDirtProof:NO];
@@ -758,7 +770,7 @@ var WLRemoteObjectByClassByPk = {},
 {
     if (anAction === createAction)
     {
-        [self remoteActionDidReceivePostData:[anAction result]];
+        [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
 
         createAction = nil;
         if ([_delegate respondsToSelector:@selector(remoteObjectWasCreated:)])
@@ -783,6 +795,9 @@ var WLRemoteObjectByClassByPk = {},
     }
     else if (anAction === saveAction)
     {
+        if ([anAction result])
+            [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
+
         saveAction = nil;
         if (_mustSaveAgain)
         {
@@ -798,6 +813,7 @@ var WLRemoteObjectByClassByPk = {},
         [self updateFromJson:[anAction result]];
         [[self undoManager] enableUndoRegistration];
         [WLRemoteObject setDirtProof:NO];
+
         contentDownloadAction = nil;
         [self remoteObjectWasLoaded];
     }

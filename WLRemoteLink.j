@@ -743,11 +743,27 @@ var WLRemoteActionSerial = 1;
     }
     else
     {
-        // PUT and DELETE should only have a response of "OK".
-        if (data != "" && data != "OK" && data != "{}")
+        // If the status code says there should be no data, expect no data.
+        if ([self statusCode] == 204)
         {
-            CPLog.error("Unexpected data in response: " + data);
-            error = 500;
+            if (data && data !== "OK")
+            {
+                CPLog.error("Unexpected data in response: " + data);
+                error = 500;
+            }
+        }
+        else
+        {
+            // Ok there's data.
+            try
+            {
+                result = [self decodeResponseBody:data];
+            }
+            catch(err)
+            {
+                CPLog.error("Unable to decode response.");
+                error = 500;
+            }
         }
     }
 
