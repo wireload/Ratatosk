@@ -684,11 +684,9 @@ var WLRemoteActionSerial = 1;
     if ([aResponse class] == CPHTTPURLResponse)
     {
         var code = [aResponse statusCode];
+        [self setStatusCode:code];
         if (code < 200 || code > 299)
-        {
-            [self setStatusCode:code];
-            CPLog.error("Received error code " + code);
-        }
+            CPLog.error("Received error code %d.", code);
     }
 }
 
@@ -761,7 +759,7 @@ var WLRemoteActionSerial = 1;
             }
             catch(err)
             {
-                CPLog.error("Unable to decode response.");
+                CPLog.error("Unable to decode response (status code %d).", [self statusCode]);
                 error = 500;
             }
         }
