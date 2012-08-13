@@ -814,17 +814,18 @@ var WLRemoteObjectClassKey = "WLRemoteObjectClassKey",
 
 - (id)initWithCoder:(CPCoder)aCoder
 {
-    var clz = [aCoder decodeObjectForKey:WLRemoteObjectClassKey],
-        pk = [aCoder decodeObjectForKey:WLRemoteObjectPkKey];
+    self = [self init];
 
-    return [WLRemoteObject instanceOf:clz withPk:pk];
+    if (self)
+    {
+        pk = [aCoder decodeObjectForKey:WLRemoteObjectPkKey];
+    }
+
+    return self;
 }
 
 - (void)encodeWithCoder:(CPCoder)aCoder
 {
-    [super encodeWithCoder:aCoder];
-
-    [aCoder encodeObject:[self class] forKey:WLRemoteObjectClassKey];
     [aCoder encodeObject:[self pk] forKey:WLRemoteObjectPkKey];
 }
 
