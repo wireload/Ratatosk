@@ -191,6 +191,15 @@
     [self assert:1 equals:[lastAction path] message:@"remote path of ensureSaved successfully set"];
 }
 
+- (void)testArchive
+{
+    var test1 = [[TestRemoteObject alloc] initWithJson:{'id': 1, 'name': 'test2 name', 'other_objects':[{'id': 5, 'coolness': 17}, {'id': 9}]}],
+        archived = [CPKeyedArchiver archivedDataWithRootObject:test1],
+        unarchived = [CPKeyedUnarchiver unarchiveObjectWithData:archived];
+
+    [self assert:[test1 UID] same:[unarchived UID] message:@"unarchived instance should be exact same instance"];
+}
+
 @end
 
 @implementation TestRemoteObject : WLRemoteObject

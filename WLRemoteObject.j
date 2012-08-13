@@ -840,14 +840,9 @@ var WLRemoteObjectClassKey = "WLRemoteObjectClassKey",
 
 - (id)initWithCoder:(CPCoder)aCoder
 {
-    self = [self init];
+    pk = [aCoder decodeObjectForKey:WLRemoteObjectPkKey];
 
-    if (self)
-    {
-        pk = [aCoder decodeObjectForKey:WLRemoteObjectPkKey];
-    }
-
-    return self;
+    return [[self class] instanceForPk:pk create:YES];
 }
 
 - (void)encodeWithCoder:(CPCoder)aCoder
