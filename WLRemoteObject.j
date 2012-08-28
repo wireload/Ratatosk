@@ -694,7 +694,10 @@ var WLRemoteObjectByClassByPk = {},
         return;
     }
 
-    CPLog.info("Save " + self + " dirt: " + [[self dirtyProperties] description]);
+    var dirtDescription = [[[[self dirtyProperties] valueForKeyPath:@"localName"] allObjects] componentsJoinedByString:@", "];
+
+    CPLog.info("Save " + [self description] + " dirt: " + dirtDescription);
+
     saveAction = [WLRemoteAction schedule:WLRemoteActionPutType path:nil delegate:self message:"Save " + [self description]];
 }
 
@@ -826,6 +829,13 @@ var WLRemoteObjectByClassByPk = {},
 {
     if ([_delegate respondsToSelector:@selector(remoteObjectWasDeleted:)])
         [_delegate remoteObjectWasDeleted:self];
+}
+
+#pragma mark CPObject
+
+- (CPString)description
+{
+    return "<" + [self class] + " " + [self UID] + (pk ? " " + pk : "") + ">";
 }
 
 @end
