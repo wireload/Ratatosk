@@ -680,10 +680,11 @@ var WLRemoteObjectByClassByPk = {},
     if (![self isDirty])
         return;
 
-    // If a save action is already in the pipe, relax.
-    if (saveAction !== nil)
+    // If a save action is already in the pipe, relax. Same if the object is about to be created - we'll transfer up to date
+    // information once the creation action fires.
+    if (createAction !== nil || saveAction !== nil)
     {
-        if (![saveAction isStarted])
+        if (![createAction isStarted] && ![saveAction isStarted])
             return;
 
         /*
