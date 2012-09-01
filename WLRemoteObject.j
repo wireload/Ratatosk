@@ -31,15 +31,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+@import "WLRemoteContext.j"
 @import "WLRemoteLink.j"
 
-var WLRemoteObjectByClassByPk = {},
-    WLRemoteObjectDirtProof = NO;
+var WLRemoteObjectDirtProof = NO;
 
 /*!
     A WLRemoteObject is a proxy object meant to be synced with a remote object
     through an API and a WLRemoteLink. Every WLRemoteObject must have a
-    unique primary key, which can be the REST URI of the object (as a
+    unique primary key which can be the REST URI of the object (as a
     CPString) or a database numeric id. The exception is for new objects
     have nil as their PK.
 
@@ -79,75 +79,48 @@ var WLRemoteObjectByClassByPk = {},
     CPUndoManager   undoManager @accessors;
 }
 
-+ (Object)_objectsByPk
-{
-    if (WLRemoteObjectByClassByPk === nil)
-        WLRemoteObjectByClassByPk = {};
-
-    if (WLRemoteObjectByClassByPk[self] == undefined)
-        WLRemoteObjectByClassByPk[self] = {};
-
-    return WLRemoteObjectByClassByPk[self];
-}
-
+/*!
+    Deprectated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectOfClass:[self class] withPk:pk]`.
+*/
 + (id)instanceForPk:(id)pk
 {
-    return [self instanceForPk:pk create:NO];
+    if (pk === nil || pk === undefined)
+        return nil;
+
+    return [[WLRemoteContext sharedRemoteContext] registeredObjectOfClass:[self class] withPk:pk];
 }
 
 /*!
-    Return the object with the given PK from the register. If `create` is specified,
-    a new unloaded object with the given PK will be created if the PK is not yet in
-    the register.
-
-    If pk is nil or undefined, nil is returned.
+    Deprectated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectOfClass:[self class] withPk:pk]`.
 */
 + (id)instanceForPk:(id)pk create:(BOOL)shouldCreate
 {
     if (pk === nil || pk === undefined)
         return nil;
 
-    var objects = [self _objectsByPk];
-    if (objects[pk] === undefined)
-    {
-        if (!shouldCreate)
-            return nil;
+    var r = [self instanceForPk:pk];
 
+    if (r === nil && shouldCreate)
+    {
         var object = [self new];
-        // Setting the pk will automatically add the object to objects[pk].
+        // Setting the pk will automatically register it.
         [object setPk:pk];
     }
 
-    return objects[pk];
+    return r;
 }
 
-+ (void)setInstance:obj forPk:(id)pk
-{
-    if (pk === nil)
-        return nil;
-    if ([obj class] !== self)
-        [CPException raise:CPInvalidArgumentException reason:@"" + [obj class] + " setInstance:forPk: should be used for setting " + obj + "."];
-
-    var objects = [self _objectsByPk];
-
-    objects[pk] = obj;
-}
-
+/*!
+    Deprectated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectsOfClass:[self class]]`.
+*/
 + (CPArray)allObjects
 {
-    r = [CPMutableArray new];
-    var objects = [self _objectsByPk];
-    for (var pk in objects)
-    {
-        if (objects.hasOwnProperty(pk))
-            [r addObject:objects[pk]];
-    }
-    return r;
+    return [[WLRemoteContext sharedRemoteContext] registeredObjectsOfClass:[self class]];
 }
 
 + (void)clearInstanceCache
 {
-    WLRemoteObjectByClassByPk = {};
+    [CPException raise:CPInvalidArgumentException reason:@"Use [WLRemoteContext clear] instead."];
 }
 
 + (void)setDirtProof:(BOOL)aFlag
@@ -261,11 +234,11 @@ var WLRemoteObjectByClassByPk = {},
                 remotePkName = [pkProperty remoteName];
             if (js[remotePkName] !== undefined)
             {
-                var _value = js[remotePkName];
+                var pkValue = js[remotePkName];
                 if ([pkProperty valueTransformer])
-                    _value = [[pkProperty valueTransformer] transformedValue:_value];
+                    pkValue = [[pkProperty valueTransformer] transformedValue:_value];
 
-                var existingObject = [[self class] instanceForPk:_value];
+                var existingObject = [[self context] registeredObjectOfClass:[self class] withPk:pkValue];
 
                 if (existingObject)
                 {
@@ -283,6 +256,12 @@ var WLRemoteObjectByClassByPk = {},
     }
 
     return self;
+}
+
+- (WLRemoteContext)context
+{
+    // For future compatibility when there can be multiple contexts.
+    return [WLRemoteContext sharedRemoteContext];
 }
 
 - (void)registerRemoteProperties:(CPArray)someProperties
@@ -458,11 +437,15 @@ var WLRemoteObjectByClassByPk = {},
 
 - (void)setPk:(id)aPk
 {
-    var objectByPk = WLRemoteObjectByClassByPk[[self class]];
-    if (pk !== nil && objectByPk !== undefined)
-        delete objectByPk[pk];
+    if (pk === aPk)
+        return;
+
+    var context = [self context];
+    [context unregisterObject:self];
+
     pk = aPk;
-    [[self class] setInstance:self forPk:pk];
+    if (pk)
+        [context registerObject:self];
 }
 
 - (void)updateFromJson:js

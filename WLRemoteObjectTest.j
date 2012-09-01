@@ -40,7 +40,7 @@
 
 - (void)tearDown
 {
-    [WLRemoteObject clearInstanceCache];
+    [[WLRemoteContext sharedRemoteContext] reset];
 }
 
 - (void)testInstanceByPk
