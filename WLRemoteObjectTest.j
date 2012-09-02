@@ -198,6 +198,39 @@
         unarchived = [CPKeyedUnarchiver unarchiveObjectWithData:archived];
 
     [self assert:[test1 UID] same:[unarchived UID] message:@"unarchived instance should be exact same instance"];
+
+    var test2 = [[TestRemoteObject alloc] init];
+
+    [test2 setName:@"unsaved object"];
+    [test2 setOtherObjects:[]];
+    [test2 setCount:3];
+
+    archived = [CPKeyedArchiver archivedDataWithRootObject:test2];
+    unarchived = [CPKeyedUnarchiver unarchiveObjectWithData:archived];
+
+    [self assertTrue:[unarchived isNew] message:@"unarchived unsaved object should be new"];
+    [self assert:@"unsaved object" equals:[unarchived name]];
+    [self assert:[] equals:[unarchived otherObjects]];
+    [self assert:3 equals:[unarchived count]];
+
+    var other1 = [[OtherRemoteObject alloc] initWithJson:{'coolness': 10}],
+        other2 = [OtherRemoteObject instanceForPk:5];
+
+    [test2 setOtherObjects:[other1]];
+
+    archived = [CPKeyedArchiver archivedDataWithRootObject:test2];
+    unarchived = [CPKeyedUnarchiver unarchiveObjectWithData:archived];
+
+    var newOther1 = [[unarchived otherObjects] firstObject];
+    [self assertTrue:[newOther1 isNew]];
+    [self assert:10 equals:[newOther1 coolness]];
+
+    [test2 setOtherObjects:[other2]];
+
+    archived = [CPKeyedArchiver archivedDataWithRootObject:test2];
+    unarchived = [CPKeyedUnarchiver unarchiveObjectWithData:archived];
+
+    [self assert:[other2] equals:[unarchived otherObjects]];
 }
 
 @end

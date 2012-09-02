@@ -827,21 +827,36 @@ var WLRemoteObjectDirtProof = NO;
 var WLRemoteObjectClassKey = "WLRemoteObjectClassKey",
     WLRemoteObjectPkKey = "WLRemoteObjectPkKey";
 
-/*!
-    TODO Do something sensible here.
-*/
 @implementation WLRemoteObject (CPCoding)
 
 - (id)initWithCoder:(CPCoder)aCoder
 {
-    pk = [aCoder decodeObjectForKey:WLRemoteObjectPkKey];
+    if (self = [self init])
+    {
+        pk = [aCoder decodeObjectForKey:@"$pk"];
 
-    return [[self class] instanceForPk:pk create:YES];
+        if (pk)
+        {
+            var existingObject = [[self class] instanceForPk:pk];
+            if (existingObject)
+                return existingObject;
+        }
+
+        [_remoteProperties enumerateObjectsUsingBlock:function(aProperty, idx)
+            {
+                [self setValue:[aCoder decodeObjectForKey:"$" + [aProperty localName]] forKey:[aProperty localName]];
+            }];
+    }
+
+    return self;
 }
 
 - (void)encodeWithCoder:(CPCoder)aCoder
 {
-    [aCoder encodeObject:[self pk] forKey:WLRemoteObjectPkKey];
+    [_remoteProperties enumerateObjectsUsingBlock:function(aProperty, idx)
+        {
+            [aCoder encodeObject:[self valueForKey:[aProperty localName]] forKey:"$" + [aProperty localName]];
+        }];
 }
 
 @end
