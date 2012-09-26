@@ -46,15 +46,15 @@ WLRemoteLinkStateRequestFailureError    = 2;
     * receives responses
     * detects errors and retries actions
     * detects expired authentication
-    * works together with RemoteObject to collect multiple `PUT` operations into single ones
+    * works together with RemoteObject to collect multiple `PATCH` / `PUT` operations into single ones
     * allows special error state actions to run with priority
 
     Queued actions are executed strictly in order to allow for actions to be
     scheduled for objects which don't have PKs yet. E.g. you could enqueue an
-    action to POST an object A and then another to PUT an update to A. When the
-    POST finishes you receive the server side PK/URI for the new object and in the
-    `PUT` action's `remoteActionWillBegin` you can set the correct URI to `put` to.
-    The sequential nature of the queue means the POST has gone before the PUT.
+    action to `POST` an object A and then another to `PUT` an update to A. When the
+    `POST` finishes you receive the server side `PK` / `URI` for the new object and in the
+    `PUT` action's `remoteActionWillBegin` you can set the correct URI to put to.
+    The sequential nature of the queue means the POST has gone before the `PUT`.
 
     Special "in error state" actions can move to the top of the queue during error
     states. This allows 'session timed out' errors to be rectified with an action
@@ -63,21 +63,22 @@ WLRemoteLinkStateRequestFailureError    = 2;
 */
 @implementation WLRemoteLink : CPObject
 {
-    CPArray     actionQueue;
-    CPString    baseUrl @accessors;
-    int         updateDelay;
-    CPTimer     updateDelayTimer;
-    CPTimer     retryTimer;
-    BOOL        isDelayingAction;
+    CPArray             actionQueue;
+    CPString            baseUrl @accessors;
+    int                 updateDelay;
+    CPTimer             updateDelayTimer;
+    CPTimer             retryTimer;
+    BOOL                isDelayingAction;
 
-    CPDate      lastSuccessfulSave @accessors;
+    CPDate              lastSuccessfulSave @accessors;
 
-    BOOL        shouldFlushActions @accessors;
-    BOOL        hasSaveActions @accessors;
+    BOOL                shouldFlushActions @accessors;
+    BOOL                hasSaveActions @accessors;
+    WLRemoteActionType  saveActionType @accessors;
 
-    BOOL        isAuthenticated @accessors;
-    BOOL        _retryOneAction;
-    int         state @accessors;
+    BOOL                isAuthenticated @accessors;
+    BOOL                _retryOneAction;
+    int                 state @accessors;
 
     CPString    authorizationHeader @accessors;
 }
@@ -120,6 +121,7 @@ WLRemoteLinkStateRequestFailureError    = 2;
         shouldFlushActions = NO;
         actionQueue = [];
         baseUrl = DefaultBaseUrl;
+        saveActionType = WLRemoteActionPatchType;
     }
 
     return self;
@@ -152,8 +154,8 @@ WLRemoteLinkStateRequestFailureError    = 2;
 }
 
 /*!
-    If the only action in the queue is a WLRemoteActionPutType, it will be
-    delayed up to aDelay seconds before being executed.
+    If the only action in the queue is of saveActionType, it will be delayed up
+    to aDelay seconds before being executed.
 
     setUpdateDelay in combination with WLRemoteObject's policy to only keep one
     save in the queue at any time enables multiple save operations, e.g. for
@@ -346,7 +348,7 @@ WLRemoteLinkStateRequestFailureError    = 2;
     if ([nextAction isExecuting] || [nextAction isDone])
         return;
 
-    if (!shouldFlushActions && actionQueue.length == 1 && [nextAction type] == WLRemoteActionPutType && updateDelay > 0)
+    if (!shouldFlushActions && actionQueue.length === 1 && [nextAction type] === saveActionType && updateDelay > 0)
     {
         if (updateDelayTimer === nil)
         {
@@ -436,6 +438,11 @@ WLRemoteActionPostType        = @"POST";
     @group WLRemoteActionType
 */
 WLRemoteActionPutType         = @"PUT";
+/*
+    @global
+    @group WLRemoteActionType
+*/
+WLRemoteActionPatchType         = @"PATCH";
 /*
     @global
     @group WLRemoteActionType
@@ -626,7 +633,7 @@ var WLRemoteActionSerial = 1;
     [request setHTTPMethod:type];
     [request setValue:contentType forHTTPHeaderField:@"Accept"];
 
-    if (type == WLRemoteActionPostType || type == WLRemoteActionPutType)
+    if (type == WLRemoteActionPostType || type == WLRemoteActionPutType || type == WLRemoteActionPatchType)
     {
         [request setValue:contentType forHTTPHeaderField:@"Content-Type"];
 

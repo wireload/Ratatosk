@@ -483,7 +483,7 @@ var WLRemoteObjectDirtProof = NO;
 
         var before = [self valueForKey:localName];
         // Avoid calling setValue:forKey: if we just received the value we already have. This will
-        // happen frequently if PUT requests respond with the object representation - most fields
+        // happen frequently if `PUT` / `PATCH` requests respond with the object representation - most fields
         // will be unchanged and we don't want expensive KVO notifications to go out needlessly.
         if (before !== after && ((before === nil && after !== nil) || ![before isEqual:after]))
         {
@@ -571,6 +571,15 @@ var WLRemoteObjectDirtProof = NO;
 {
     return [self remotePath];
 }
+
+/*!
+    The path to use when PATCHing (updating) this resource. By default this is [self remotePath].
+*/
+- (CPString)patchPath
+{
+    return [self remotePath];
+}
+
 
 /*!
     The path to use when DELETEing this resource. By default this is [self remotePath].
@@ -682,7 +691,7 @@ var WLRemoteObjectDirtProof = NO;
 
     CPLog.info("Save " + [self description] + " dirt: " + dirtDescription);
 
-    saveAction = [WLRemoteAction schedule:WLRemoteActionPutType path:nil delegate:self message:"Save " + [self description]];
+    saveAction = [WLRemoteAction schedule:[[[self context] remoteLink] saveActionType] path:nil delegate:self message:"Save " + [self description]];
 }
 
 - (void)remoteActionWillBegin:(WLRemoteAction)anAction
@@ -722,12 +731,15 @@ var WLRemoteObjectDirtProof = NO;
             return;
         }
 
+        var patchAction = [anAction type] === WLRemoteActionPatchType;
+
         [anAction setMessage:"Saving " + [self description]];
-        [anAction setPayload:[self asJSObject]];
+        [anAction setPayload:patchAction ? [self asPatchJSObject] : [self asJSObject]];
+        [anAction setPath:patchAction ? [self patchPath] : [self putPath]];
+
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
         _lastSyncedRevision = _revision;
-        [anAction setPath:[self putPath]];
     }
     else if (anAction === contentDownloadAction)
     {
