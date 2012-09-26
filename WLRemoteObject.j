@@ -111,7 +111,7 @@ var WLRemoteObjectDirtProof = NO;
 }
 
 /*!
-    Deprectated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectsOfClass:[self class]]`.
+    Deprecated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectsOfClass:[self class]]`.
 */
 + (CPArray)allObjects
 {
@@ -120,7 +120,7 @@ var WLRemoteObjectDirtProof = NO;
 
 + (void)clearInstanceCache
 {
-    [CPException raise:CPInvalidArgumentException reason:@"Use [WLRemoteContext clear] instead."];
+    [CPException raise:CPInvalidArgumentException reason:@"Use [WLRemoteContext reset] instead."];
 }
 
 + (void)setDirtProof:(BOOL)aFlag
@@ -541,7 +541,7 @@ var WLRemoteObjectDirtProof = NO;
 /*!
     The path of this resource within the API. The path should not include the path to the API root (see WLRemoteLink).
 
-    By default, the PK is assumed to the the unique path.
+    By default, the PK is assumed to be the canonical resource URI.
 */
 - (CPString)remotePath
 {
