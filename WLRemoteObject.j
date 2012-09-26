@@ -34,7 +34,15 @@
 @import "WLRemoteContext.j"
 @import "WLRemoteLink.j"
 
-var WLRemoteObjectDirtProof = NO;
+var WLRemoteObjectDirtProof = NO,
+
+    CamelCaseToHyphenPrefixStripper = new RegExp('^[_A-Z]+([A-Z])'),
+    CamelCaseToHyphenator = new RegExp("([a-z])([A-Z])");
+
+function CamelCaseToHyphenated(camelCase)
+{
+    return camelCase.replace(CamelCaseToHyphenPrefixStripper, '$1').replace(CamelCaseToHyphenator, '$1-$2').toLowerCase();
+};
 
 /*!
     A WLRemoteObject is a proxy object meant to be synced with a remote object
@@ -59,7 +67,9 @@ var WLRemoteObjectDirtProof = NO;
 {
     id              pk @accessors;
 
+    CPString        _remoteName @accessors(readonly, property=remoteName);
     CPSet           _remoteProperties @accessors(readonly, property=remoteProperties);
+
     Object          _propertyLastRevision;
     CPSet           _deferredProperties;
     int             _revision;
@@ -80,18 +90,18 @@ var WLRemoteObjectDirtProof = NO;
 }
 
 /*!
-    Deprectated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectOfClass:[self class] withPk:pk]`.
+    Deprectated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectForRemoteName:[self remoteName] withPk:pk]`.
 */
 + (id)instanceForPk:(id)pk
 {
     if (pk === nil || pk === undefined)
         return nil;
 
-    return [[WLRemoteContext sharedRemoteContext] registeredObjectOfClass:[self class] withPk:pk];
+    return [[WLRemoteContext sharedRemoteContext] registeredObjectForRemoteName:[self remoteName] withPk:pk];
 }
 
 /*!
-    Deprectated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectOfClass:[self class] withPk:pk]`.
+    Deprectated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectForRemoteName:[self remoteName] withPk:pk]`.
 */
 + (id)instanceForPk:(id)pk create:(BOOL)shouldCreate
 {
@@ -111,11 +121,11 @@ var WLRemoteObjectDirtProof = NO;
 }
 
 /*!
-    Deprecated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectsOfClass:[self class]]`.
+    Deprecated. Use `[[WLRemoteContext sharedRemoteContext] registeredObjectsForRemoteName:[self remoteName]]`.
 */
 + (CPArray)allObjects
 {
-    return [[WLRemoteContext sharedRemoteContext] registeredObjectsOfClass:[self class]];
+    return [[WLRemoteContext sharedRemoteContext] registeredObjectsForRemoteName:[self removeNmae]];
 }
 
 + (void)clearInstanceCache
@@ -132,6 +142,19 @@ var WLRemoteObjectDirtProof = NO;
 {
     // This is not the original purpose, but works out quite nicely.
     return WLRemoteObjectDirtProof;
+}
+
+/*!
+    The name of the remote resource. The name of the resource combined with the PK of an instance is what uniquely identifies a specific resource. (For many APIs the PK is the resource URI and alone uniquely identifies the resource, but for APIs where the PK is something like an ID number the name is critical so that e.g. User 101 is not considered the same remote object as BlogPost 101.)
+
+    If two classes are alternative implementations for the same remote resource, they should have the same remote name. E.g. if there is a remote resource called a "Shape" and two classes "Circle" and "Rectangle" implement two types of "Shape", their remoteName should be "shape" so that Ratatosk can recognise that both circles and rectangles should go in the same "bucket" of objects.
+
+    By default the remoteName is the class name minus any leading prefix and converted from camelcase to lowercase with dashes. E.g. a remote object class like WLBlogPost would by default have a remoteName of 'blog-post'.
+*/
++ (CPString)remoteName
+{
+    var className = CPStringFromClass([self class]);
+    return CamelCaseToHyphenated(className);
 }
 
 /*!
@@ -186,6 +209,7 @@ var WLRemoteObjectDirtProof = NO;
         _lastSyncedRevision = -1;
         _shouldAutoSave = YES;
         _shouldAutoLoad = YES;
+        _remoteName = [[self class] remoteName];
         _remoteProperties = [CPSet set];
         _propertyLastRevision = {};
         _deferredProperties = [CPSet set];
@@ -204,7 +228,7 @@ var WLRemoteObjectDirtProof = NO;
                     transformer = property[2];
 
                 if (!localName)
-                    [CPException raise:CPInvalidArgumentException reason:@"Incorrect `+ (CPArray)remoteProperties` for RemoteObject classs " + [self class] + "."];
+                    [CPException raise:CPInvalidArgumentException reason:@"Incorrect `+ (CPArray)remoteProperties` for RemoteObject class " + [self class] + "."];
                 if (!remoteName)
                     remoteName = localName;
                 if (!transformer)
@@ -238,7 +262,7 @@ var WLRemoteObjectDirtProof = NO;
                 if ([pkProperty valueTransformer])
                     pkValue = [[pkProperty valueTransformer] transformedValue:_value];
 
-                var existingObject = [[self context] registeredObjectOfClass:[self class] withPk:pkValue];
+                var existingObject = [[self context] registeredObjectForRemoteName:[self remoteName] withPk:pkValue];
 
                 if (existingObject)
                 {
@@ -527,7 +551,7 @@ var WLRemoteObjectDirtProof = NO;
     if (self === anObject)
         return YES;
 
-    if (![anObject isKindOfClass:[self class]])
+    if (![[anObject remoteName] isEqual:[self remoteName]])
         return NO;
 
     // Entries with no primary key can only be equal if they

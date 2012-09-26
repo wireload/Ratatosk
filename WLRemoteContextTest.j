@@ -49,25 +49,25 @@
     var context = [WLRemoteContext sharedRemoteContext];
 
     [self assert:[] equals:[context registeredObjects] message:@"empty context"];
-    [self assert:[] equals:[context registeredObjectsOfClass:[TestRemoteObject class]] message:@"empty context"];
-    [self assert:nil equals:[context registeredObjectOfClass:[TestRemoteObject class] withPk:5] message:@"empty context"];
+    [self assert:[] equals:[context registeredObjectsForRemoteName:[TestRemoteObject remoteName]] message:@"empty context"];
+    [self assert:nil equals:[context registeredObjectForRemoteName:[TestRemoteObject remoteName] withPk:5] message:@"empty context"];
 
     var test1 = [[TestRemoteObject alloc] initWithJson:{'id': 5, 'name': 'test1'}],
         test2 = [[TestRemoteObject alloc] initWithJson:{'id': 15, 'name': 'test2'}];
 
-    [self assert:[test1, test2] equals:[context registeredObjectsOfClass:[TestRemoteObject class]] message:@"objects in context"];
-    [self assert:test1 equals:[context registeredObjectOfClass:[TestRemoteObject class] withPk:5] message:@"test1 in context"];
+    [self assert:[test1, test2] equals:[context registeredObjectsForRemoteName:[TestRemoteObject remoteName]] message:@"objects in context"];
+    [self assert:test1 equals:[context registeredObjectForRemoteName:[TestRemoteObject remoteName] withPk:5] message:@"test1 in context"];
 
     var test3 = [[TestRemoteObject alloc] initWithJson:{'id': 1, 'name': 'test2 name', 'other_objects':
             [{'id': 5, 'coolness': 17}, {'id': 9}]
         }];
 
-    [self assert:[test1, test2, test3] equals:[context registeredObjectsOfClass:[TestRemoteObject class]] message:@"objects in context"];
+    [self assert:[test1, test2, test3] equals:[context registeredObjectsForRemoteName:[TestRemoteObject remoteName]] message:@"objects in context"];
 
     var other1 = [[test3 otherObjects] firstObject],
         other2 = [[test3 otherObjects] lastObject];
 
-    [self assert:[other1, other2] equals:[context registeredObjectsOfClass:[OtherRemoteObject class]] message:@"other object in context"];
+    [self assert:[other1, other2] equals:[context registeredObjectsForRemoteName:[OtherRemoteObject remoteName]] message:@"other object in context"];
 }
 
 @end

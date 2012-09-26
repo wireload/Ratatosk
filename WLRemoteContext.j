@@ -40,13 +40,13 @@ var WLRemoteContextPkPrefix = "!",
 
 var ContextKeyForObject = function(anObject)
 {
-    var className = CPStringFromClass([anObject class]),
+    var remoteName = [anObject remoteName],
         uniqueId = [anObject pk];
 
     if (uniqueId !== nil && uniqueId !== undefined)
-        return className + ":" + WLRemoteContextPkPrefix + uniqueId;
+        return remoteName + ":" + WLRemoteContextPkPrefix + uniqueId;
 
-    return className + ":" + WLRemoteContextUidPrefix + [anObject UID];
+    return remoteName + ":" + WLRemoteContextUidPrefix + [anObject UID];
 }
 
 /*!
@@ -94,7 +94,7 @@ var ContextKeyForObject = function(anObject)
         existingObject = [managedObjects objectForKey:key];
 
     if (existingObject && existingObject !== anObject)
-        [CPException raise:CPInvalidArgumentException reason:@"Object with specified PK already exists in context (" + CPStringFromClass([anObject class]) + " " + [anObject pk] + ")."];
+        [CPException raise:CPInvalidArgumentException reason:@"Object with specified PK already exists in context (" + [anObject remoteName] + " " + [anObject pk] + ")."];
 
     [managedObjects setObject:anObject forKey:key];
 }
@@ -111,23 +111,22 @@ var ContextKeyForObject = function(anObject)
     return [managedObjects allValues];
 }
 
-- (CPArray)registeredObjectsOfClass:(Class)aClass
+- (CPArray)registeredObjectsForRemoteName:(CPString)aRemoteName
 {
-    var className = CPStringFromClass(aClass),
-        r = [];
+    var r = [];
 
     [managedObjects enumerateKeysAndObjectsUsingBlock:function(aKey, anObject)
         {
-            if (aKey.lastIndexOf(className, 0) === 0)
+            if (aKey.lastIndexOf(aRemoteName, 0) === 0)
                 [r addObject:anObject];
         }];
 
     return r;
 }
 
-- (WLRemoteObject)registeredObjectOfClass:(Class)aClass withPk:(id)aPk
+- (WLRemoteObject)registeredObjectForRemoteName:(CPString)aRemoteName withPk:(id)aPk
 {
-    var key = CPStringFromClass(aClass) + ":" + WLRemoteContextPkPrefix + aPk;
+    var key = aRemoteName + ":" + WLRemoteContextPkPrefix + aPk;
 
     return [managedObjects objectForKey:key];
 }
