@@ -709,59 +709,23 @@ var WLRemoteActionSerial = 1;
         error = [aConnection _HTTPRequest].success() ? 200 : 503;
     }
 
-    if (type !== WLRemoteActionPutType && type !== WLRemoteActionDeleteType)
+    // If the status code says there should be no data, expect no data.
+    if ([self statusCode] == 204)
     {
-        if (data)
-        {
-            try
-            {
-                result = [self decodeResponseBody:data];
-            }
-            catch(err)
-            {
-                CPLog.error("Unable to decode response.");
-                error = 500;
-            }
-
-            if (error == 500)
-            {
-                // Pass
-            }
-            else if (typeof result === 'undefined' || result === null)
-            {
-                CPLog.error("Received an empty response.");
-                error = 500;
-            }
-        }
-        else
-        {
-            CPLog.error("No data in response.");
-            error = 500;
-        }
+        if (data && data !== "OK")
+            CPLog.warn("Unexpected data in response: %@", data);
     }
     else
     {
-        // If the status code says there should be no data, expect no data.
-        if ([self statusCode] == 204)
+        // Ok there's data.
+        try
         {
-            if (data && data !== "OK")
-            {
-                CPLog.error("Unexpected data in response: " + data);
-                error = 500;
-            }
+            result = [self decodeResponseBody:data];
         }
-        else
+        catch(err)
         {
-            // Ok there's data.
-            try
-            {
-                result = [self decodeResponseBody:data];
-            }
-            catch(err)
-            {
-                CPLog.error("Unable to decode response (status code %d).", [self statusCode]);
-                error = 500;
-            }
+            CPLog.error("Unable to decode response (status code %d).", [self statusCode]);
+            error = 500;
         }
     }
 
