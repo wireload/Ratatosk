@@ -31,6 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+@import "WLRemoteLink.j"
+
 var SharedRemoteContext = nil;
 
 var WLRemoteContextPkPrefix = "!",
@@ -54,6 +56,8 @@ var ContextKeyForObject = function(anObject)
 */
 @implementation WLRemoteContext : CPObject
 {
+    WLRemoteLink remoteLink @accessors;
+
     CPDictionary managedObjects;
 }
 
@@ -70,6 +74,7 @@ var ContextKeyForObject = function(anObject)
     if (self = [super init])
     {
         managedObjects = [CPMutableDictionary new];
+        remoteLink = [WLRemoteLink sharedRemoteLink];
     }
 
     return self;
