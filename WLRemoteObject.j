@@ -551,6 +551,9 @@ function CamelCaseToHyphenated(camelCase)
     if (self === anObject)
         return YES;
 
+    if (![anObject isKindOfClass:WLRemoteObject])
+        return NO;
+
     if (![[anObject remoteName] isEqual:[self remoteName]])
         return NO;
 
