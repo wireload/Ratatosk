@@ -607,7 +607,6 @@ function CamelCaseToHyphenated(camelCase)
     return [self remotePath];
 }
 
-
 /*!
     The path to use when DELETEing this resource. By default this is [self remotePath].
 */
@@ -689,6 +688,10 @@ function CamelCaseToHyphenated(camelCase)
 */
 - (void)reload
 {
+    // One download is enough.
+    if (contentDownloadAction && ![contentDownloadAction isStarted])
+        return;
+
     // Path might not be known yet. A load can be scheduled before the object has been created. The path will be
     // set in remoteActionWillBegin when the path must be known.
     contentDownloadAction = [WLRemoteAction schedule:WLRemoteActionGetType path:nil delegate:self message:"Loading " + [self description]];
