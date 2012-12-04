@@ -125,7 +125,7 @@ function CamelCaseToHyphenated(camelCase)
 */
 + (CPArray)allObjects
 {
-    return [[WLRemoteContext sharedRemoteContext] registeredObjectsForRemoteName:[self removeName]];
+    return [[WLRemoteContext sharedRemoteContext] registeredObjectsForRemoteName:[self remoteName]];
 }
 
 + (void)clearInstanceCache
