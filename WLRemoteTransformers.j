@@ -35,6 +35,9 @@
 
 var IsNumberRegExp = new RegExp('^\d+$');
 
+/*!
+    Accept ISO8601 dates from the server, and format in ISO8601 when tranforming back to the server. Note that when transferring from remote->local, any ISO8601 format is accepted, but when transmitting from local->remote the format YYYY-MM-DDTHH:MM:SS +0000 is always used.
+*/
 @implementation WLDateTransformer : CPObject
 
 + (BOOL)allowsReverseTransformation
@@ -51,11 +54,7 @@ var IsNumberRegExp = new RegExp('^\d+$');
 {
     if (value)
     {
-        // If the timezone specifier was left out, add it.
-        var dateTestRegEx = new RegExp(' [+-]\d{4}$');
-        if (!dateTestRegEx.test(value))
-            value += ' +0000';
-        return [[CPDate alloc] initWithString:value];
+        return new Date(Date.parseISO8601(value));
     }
     else
     {
@@ -67,7 +66,7 @@ var IsNumberRegExp = new RegExp('^\d+$');
 {
     if (value)
     {
-        // We want to send UTC dates.
+        // We want to send ISO8601 UTC dates.
         return [value utcDescription];
     }
     else

@@ -1,9 +1,9 @@
 /*
- * WLDate-Util.j
+ * WLRemoteTransformersTest.j
  * Ratatosk
  *
- * Created by Alexander Ljungberg on October 23, 2011.
- * Copyright 2009, WireLoad Inc. All rights reserved.
+ * Created by Alexander Ljungberg on January 7, 2013.
+ * Copyright 2013, WireLoad Inc. All rights reserved.
  *
  * All rights reserved.
  *
@@ -31,18 +31,27 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-@implementation CPDate (UTC)
-{
+@import "WLRemoteTransformers.j"
 
+@implementation WLRemoteTransformersTest : OJTestCase
+{
 }
 
-/*!
-    Returns the date as a string in the ISO8601 format
-    YYYY-MM-DDTHH:MM:SS +0000.
-*/
-- (CPString)utcDescription
+- (void)testDateTransformer
 {
-    return [CPString stringWithFormat:@"%04d-%02d-%02dT%02d:%02d:%02d +0000", self.getUTCFullYear(), self.getUTCMonth() + 1, self.getUTCDate(), self.getUTCHours(), self.getUTCMinutes(), self.getUTCSeconds()];
+    var transformer = [WLDateTransformer new];
+
+    [self assert:[[CPDate alloc] initWithString:@"2012-12-21 18:13:19 +0000"] equals:[transformer transformedValue:@"2012-12-21T18:13:19Z"]];
+    [self assert:[[CPDate alloc] initWithString:@"2012-12-21 18:13:19 +0000"] equals:[transformer transformedValue:@"2012-12-21T18:13:19 +0000"]];
+    [self assert:[[CPDate alloc] initWithString:@"2012-12-21 18:13:19 +0000"] equals:[transformer transformedValue:@"2012-12-21T19:13:19 +0100"]];
+}
+
+- (void)testDateTransformerReverse
+{
+    var transformer = [WLDateTransformer new];
+
+    [self assert:@"2012-12-21T18:13:19 +0000" equals:[transformer reverseTransformedValue:[[CPDate alloc] initWithString:@"2012-12-21 18:13:19 +0000"]]];
+    [self assert:@"2012-12-21T18:13:19 +0000" equals:[transformer reverseTransformedValue:[[CPDate alloc] initWithString:@"2012-12-21 19:13:19 +0100"]]];
 }
 
 @end
