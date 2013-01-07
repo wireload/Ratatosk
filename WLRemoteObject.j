@@ -112,9 +112,9 @@ function CamelCaseToHyphenated(camelCase)
 
     if (r === nil && shouldCreate)
     {
-        var object = [self new];
+        r = [self new];
         // Setting the pk will automatically register it.
-        [object setPk:pk];
+        [r setPk:pk];
     }
 
     return r;

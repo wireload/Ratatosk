@@ -31,6 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+@import "WLRemoteObjectTest.j"
 @import "WLRemoteTransformers.j"
 
 @implementation WLRemoteTransformersTest : OJTestCase
@@ -52,6 +53,16 @@
 
     [self assert:@"2012-12-21T18:13:19 +0000" equals:[transformer reverseTransformedValue:[[CPDate alloc] initWithString:@"2012-12-21 18:13:19 +0000"]]];
     [self assert:@"2012-12-21T18:13:19 +0000" equals:[transformer reverseTransformedValue:[[CPDate alloc] initWithString:@"2012-12-21 19:13:19 +0100"]]];
+}
+
+- (void)testForeignObjectByIdTransformer
+{
+    var transformer = [WLForeignObjectByIdTransformer forObjectClass:TestRemoteObject],
+        a = [transformer transformedValue:@"id1"];
+
+    [self assertTrue:a === [transformer transformedValue:@"id1"]];
+    [self assertTrue:a !== [transformer transformedValue:@"id2"]];
+    [self assertTrue:[a isKindOfClass:TestRemoteObject]];
 }
 
 @end
