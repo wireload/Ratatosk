@@ -63,7 +63,6 @@
 
     [self assert:[link urlWithSslIffNeeded:'/bob/'] equals:'/bob/'];
     [self assert:[link urlWithSslIffNeeded:'hTTp://bob.com'] equals:'https://bob.com'];
-
 }
 
 @end

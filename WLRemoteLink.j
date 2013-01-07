@@ -789,15 +789,10 @@ var WLRemoteActionSerial = 1;
 
 - (CPString)fullPath
 {
-    var opening = path && String(path).toLowerCase().substring(0, 7);
-    if (opening && (opening == 'http://' || opening == 'https:/' || opening == 'file://'))
-        return path;
+    var baseUrlString = [[WLRemoteLink sharedRemoteLink] baseUrl] || @"/",
+        baseUrl = [CPURL URLWithString:baseUrlString];
 
-    var baseUrl = [[WLRemoteLink sharedRemoteLink] baseUrl];
-    if (path)
-        return baseUrl + path;
-    else
-        return baseUrl;
+    return [[CPURL URLWithString:String(path || "") relativeToURL:baseUrl] absoluteString];
 }
 
 - (CPString)description

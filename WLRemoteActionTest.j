@@ -124,6 +124,21 @@
     [self assert:@"EUR" equals:[someMoney currency] message:@"updated currency"];
 }
 
+- (void)testFullPath
+{
+    [[WLRemoteLink sharedRemoteLink] setBaseUrl:"http://example.com/api/v1/"];
+
+    [self assert:@"http://example.com/api/v1/users/1" equals:[[[WLRemoteAction alloc] initWithType:WLRemoteActionGetType path:"users/1" delegate:nil message:nil] fullPath]];
+    [self assert:@"http://example.com/users/1" equals:[[[WLRemoteAction alloc] initWithType:WLRemoteActionGetType path:"/users/1" delegate:nil message:nil] fullPath]];
+    [self assert:@"http://otherexample.com/users/1" equals:[[[WLRemoteAction alloc] initWithType:WLRemoteActionGetType path:"http://otherexample.com/users/1" delegate:nil message:nil] fullPath]];
+
+    [[WLRemoteLink sharedRemoteLink] setBaseUrl:"/api/v1/"];
+
+    [self assert:@"/api/v1/users/1" equals:[[[WLRemoteAction alloc] initWithType:WLRemoteActionGetType path:"users/1" delegate:nil message:nil] fullPath]];
+    [self assert:@"/users/1" equals:[[[WLRemoteAction alloc] initWithType:WLRemoteActionGetType path:"/users/1" delegate:nil message:nil] fullPath]];
+    [self assert:@"http://otherexample.com/users/1" equals:[[[WLRemoteAction alloc] initWithType:WLRemoteActionGetType path:"http://otherexample.com/users/1" delegate:nil message:nil] fullPath]];
+}
+
 @end
 
 @implementation CustomContentTypeObject : TestRemoteObject
