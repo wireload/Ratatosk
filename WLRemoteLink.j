@@ -80,7 +80,8 @@ WLRemoteLinkStateRequestFailureError    = 2;
     BOOL                _retryOneAction;
     int                 state @accessors;
 
-    CPString    authorizationHeader @accessors;
+    CPString            authorizationHeader @accessors;
+    id                  delegate @accessors;
 }
 
 + (void)setDefaultBaseURL:(CPString)anApiUrl
@@ -421,6 +422,23 @@ WLRemoteLinkStateRequestFailureError    = 2;
         [self maybeExecute];
 }
 
+/*!
+    Connect to the remote server using the given request. Any link delegate will be given
+    a chance to make header modifications to set any authorisation details.
+
+    @param aContext an optional context object
+*/
+- (CPURLConnection)sendRequest:(CPURLRequest)aRequest withDelegate:(id)aDelegate context:(id)aContext
+{
+    if (authorizationHeader)
+        [aRequest setValue:authorizationHeader forHTTPHeaderField:@"Authorization"];
+
+    if ([delegate respondsToSelector:@selector(remoteLink:willSendRequest:withDelegate:context:)])
+        [delegate remoteLink:self willSendRequest:aRequest withDelegate:aDelegate context:aContext];
+
+    return [CPURLConnection connectionWithRequest:aRequest delegate:aDelegate];
+}
+
 @end
 
 /*
@@ -463,6 +481,8 @@ var WLRemoteActionSerial = 1;
     id                  _delegate;
     long                serial;
     BOOL                done;
+
+    WLRemoteLink        link @accessors;
 
     CPURLConnection     connection;
 
@@ -508,6 +528,8 @@ var WLRemoteActionSerial = 1;
 {
     if (self = [super init])
     {
+        link = [WLRemoteLink sharedRemoteLink];
+
         serial = WLRemoteActionSerial++;
         shouldRunInErrorState = NO;
         done = NO;
@@ -523,13 +545,13 @@ var WLRemoteActionSerial = 1;
 
 - (void)schedule
 {
-    [[WLRemoteLink sharedRemoteLink] scheduleAction:self];
+    [[self link] scheduleAction:self];
 }
 
 - (void)cancel
 {
     done = YES;
-    [[WLRemoteLink sharedRemoteLink] unscheduleAction:self];
+    [[self link] unscheduleAction:self];
 }
 
 - (void)setDelegate:(id)aDelegate
@@ -668,10 +690,6 @@ var WLRemoteActionSerial = 1;
         }
     }
 
-    var authorizationHeader = [[WLRemoteLink sharedRemoteLink] authorizationHeader];
-    if (authorizationHeader)
-        [request setValue:authorizationHeader forHTTPHeaderField:@"Authorization"];
-
     [self makeConnectionWithRequest:request];
 }
 
@@ -681,7 +699,7 @@ var WLRemoteActionSerial = 1;
 */
 - (CPURLConnection)makeConnectionWithRequest:(CPURLRequest)aRequest
 {
-    connection = [CPURLConnection connectionWithRequest:aRequest delegate:self];
+    [[self link] sendRequest:aRequest withDelegate:self context:self];
 }
 
 - (void)connection:(CPURLConnection)aConnection didReceiveResponse:(CPURLResponse)aResponse
