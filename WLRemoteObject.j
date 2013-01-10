@@ -352,7 +352,7 @@ function CamelCaseToHyphenated(camelCase)
     if (isBeforeFlag)
         return;
 
-    if ([change valueForKey:CPKeyValueChangeKindKey] == CPKeyValueChangeSetting && [_remoteProperties containsObject:aContext])
+    if ([_remoteProperties containsObject:aContext])
     {
         var before = [change valueForKey:CPKeyValueChangeOldKey],
             after = [change valueForKey:CPKeyValueChangeNewKey],
