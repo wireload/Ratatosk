@@ -725,7 +725,6 @@ var WLRemoteActionSerial = 1;
 
     result = nil;
     error = [self statusCode];
-    error = error >= 200 && error <= 299 ? nil : error; // 2XX codes are not errors.
 
     if (error === 0)
     {
@@ -734,23 +733,28 @@ var WLRemoteActionSerial = 1;
         error = [aConnection _HTTPRequest].success() ? 200 : 503;
     }
 
-    // If the status code says there should be no data, expect no data.
-    if ([self statusCode] == 204)
+    error = error >= 200 && error <= 299 ? nil : error; // 2XX codes are not errors.
+
+    if (!error)
     {
-        if (data && data !== "OK")
-            CPLog.warn("Unexpected data in response: %@", data);
-    }
-    else
-    {
-        // Ok there's data.
-        try
+        // If the status code says there should be no data, expect no data.
+        if ([self statusCode] == 204)
         {
-            result = [self decodeResponseBody:data];
+            if (data && data !== "OK")
+                CPLog.warn("Unexpected data in response: %@", data);
         }
-        catch(err)
+        else
         {
-            CPLog.error("Unable to decode response (status code %d).", [self statusCode]);
-            error = 500;
+            // Ok there's data.
+            try
+            {
+                result = [self decodeResponseBody:data];
+            }
+            catch(err)
+            {
+                CPLog.error("Unable to decode response (status code %d).", [self statusCode]);
+                error = 500;
+            }
         }
     }
 
