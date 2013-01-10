@@ -700,7 +700,7 @@ var WLRemoteActionSerial = 1;
 */
 - (CPURLConnection)makeConnectionWithRequest:(CPURLRequest)aRequest
 {
-    [[self link] sendRequest:aRequest withDelegate:self context:self];
+    connection = [[self link] sendRequest:aRequest withDelegate:self context:self];
 }
 
 - (void)connection:(CPURLConnection)aConnection didReceiveResponse:(CPURLResponse)aResponse
