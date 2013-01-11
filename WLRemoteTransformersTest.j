@@ -65,4 +65,13 @@
     [self assertTrue:[a isKindOfClass:TestRemoteObject]];
 }
 
+- (void)testURLTransformer
+{
+    var transformer = [WLURLTransformer new],
+        inp = "http://example.com";
+
+    [self assert:[CPURL URLWithString:inp] equals:[transformer transformedValue:inp]];
+    [self assert:inp equals:[transformer reverseTransformedValue:[CPURL URLWithString:inp]]];
+}
+
 @end

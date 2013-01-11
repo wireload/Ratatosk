@@ -326,3 +326,31 @@ var IsNumberRegExp = new RegExp('^\d+$');
 
 @end
 
+/*!
+    Takes a string and makes it a CPURL. Reversible.
+*/
+@implementation WLURLTransformer : CPObject
+
++ (boolean)allowsReverseTransformation
+{
+    return YES;
+}
+
++ (Class)transformedValueClass
+{
+    return [CPURL class];
+}
+
+- (id)transformedValue:(id)aValue
+{
+    if (!aValue)
+        return nil;
+    return [CPURL URLWithString:aValue];
+}
+
+- (id)reverseTransformedValue:(id)aValue
+{
+    return [aValue absoluteString];
+}
+
+@end
