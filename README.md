@@ -103,6 +103,47 @@ Ratatosk includes a JXON implementation which makes the mapping process easier. 
         // ... will POST '<money currency="GBP"><id/><value>95</value></money>'
     }
 
+## CSRF and Authentication Headers
+
+If you need to send special HTTP headers to the servers, such as `Authorization` or Cross Site Request Forgery protection tokens, you can configure this at the "link" level. `WLRemoteLink` represents the link to your server.
+
+### Simple Authorisation
+
+    [[WLRemoteLink sharedRemoteLink] setAuthorizationHeader:@"ApiKey user:DEADCAFE1234"];
+
+This will add an unchanging HTTP `Authorization` header to every server request.
+
+### CSRF or Complex Headers
+
+If you need to do something more advanced, such as signing your requests or adding a CSRF token only for certain requests you can set a `WLRemoteLink` delegate and respond to the `remoteLink:willSendRequest:withDelegate:context:` delegate message.
+
+This is an example for how to do CSRF headers:
+
+    - (void)applicationDidFinishLaunching:(CPNotification)aNotification
+    {
+        [[WLRemoteLink sharedRemoteLink] setDelegate:self];
+    }
+
+    #pragma mark WLRemoteLink Delegate
+
+    - (void)remoteLink:(WLRemoteLink)aLink willSendRequest:(CPURLRequest)aRequest withDelegate:(id)aDelegate context:(id)aContext
+    {
+        switch ([[aRequest HTTPMethod] uppercaseString])
+        {
+            case "POST":
+            case "PUT":
+            case "PATCH":
+            case "DELETE":
+                var csrfToken = [[[CPCookie alloc] initWithName:"csrftoken"] value];
+                [aRequest setValue:csrfToken forHTTPHeaderField:@"X-CSRFToken"];
+                break;
+       }
+    }
+
+This assumes the CSRF token is available as a cookie named `csrftoken`.
+
+You could also use this delegate method as a final opportunity to make general changes to requests.
+
 ## License ##
 
 Free to use and modify under the terms of the BSD open source license.
