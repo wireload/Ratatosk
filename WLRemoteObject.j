@@ -39,6 +39,15 @@ var WLRemoteObjectDirtProof = NO,
     CamelCaseToHyphenPrefixStripper = new RegExp('^[_A-Z]+([A-Z])'),
     CamelCaseToHyphenator = new RegExp("([a-z])([A-Z])");
 
+/*!
+    Compare a and b whether a is CPObject or JS primitive.
+*/
+var isEqual = function(a, b) {
+    if (a == nil || b == nil || !a.isa)
+        return a === b;
+    return [a isEqual:b];
+}
+
 function CamelCaseToHyphenated(camelCase)
 {
     return camelCase.replace(CamelCaseToHyphenPrefixStripper, '$1').replace(CamelCaseToHyphenator, '$1-$2').toLowerCase();
@@ -357,7 +366,7 @@ function CamelCaseToHyphenated(camelCase)
         var before = [change valueForKey:CPKeyValueChangeOldKey],
             after = [change valueForKey:CPKeyValueChangeNewKey],
             localName = [aContext localName];
-        if (before !== after && ((before === nil || after === nil) || (before.isa && ![before isEqual:after])))
+        if (!isEqual(before, after))
             [self makeDirtyProperty:localName];
         [_deferredProperties removeObject:aContext];
 
@@ -509,7 +518,7 @@ function CamelCaseToHyphenated(camelCase)
         // Avoid calling setValue:forKey: if we just received the value we already have. This will
         // happen frequently if `PUT` / `PATCH` requests respond with the object representation - most fields
         // will be unchanged and we don't want expensive KVO notifications to go out needlessly.
-        if (before !== after && ((before === nil && after !== nil) || ![before isEqual:after]))
+        if (!isEqual(before, after))
         {
             // CPLog.debug("Updating property %@ from JSON (before: %@ after: %@)", localName, before, after);
             [self setValue:after forKey:localName];
