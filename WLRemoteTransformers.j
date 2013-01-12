@@ -354,3 +354,32 @@ var IsNumberRegExp = new RegExp('^\d+$');
 }
 
 @end
+
+/*!
+    Takes a string and makes it a CPColor. Reversible.
+*/
+@implementation WLColorTransformer : CPObject
+
++ (boolean)allowsReverseTransformation
+{
+    return YES;
+}
+
++ (Class)transformedValueClass
+{
+    return [CPColor class];
+}
+
+- (id)transformedValue:(id)aValue
+{
+    if (!aValue)
+        return nil;
+    return [CPColor colorWithHexString:aValue];
+}
+
+- (id)reverseTransformedValue:(id)aValue
+{
+    return [aValue hexString];
+}
+
+@end
