@@ -349,6 +349,7 @@ function CamelCaseToHyphenated(camelCase)
         [self addObserver:self forKeyPath:[property localName] options:nil context:property];
     }
 }
+
 - (void)_autoLoad:(CPObject)anObject
 {
     if ([anObject respondsToSelector:@selector(ensureLoaded)])
@@ -514,14 +515,14 @@ function CamelCaseToHyphenated(camelCase)
         if ([aProperty valueTransformer])
             after = [[aProperty valueTransformer] transformedValue:after];
 
-        var before = [self valueForKey:localName];
+        var before = [self valueForKeyPath:localName];
         // Avoid calling setValue:forKey: if we just received the value we already have. This will
         // happen frequently if `PUT` / `PATCH` requests respond with the object representation - most fields
         // will be unchanged and we don't want expensive KVO notifications to go out needlessly.
         if (!isEqual(before, after))
         {
             // CPLog.debug("Updating property %@ from JSON (before: %@ after: %@)", localName, before, after);
-            [self setValue:after forKey:localName];
+            [self setValue:after forKeyPath:localName];
         }
 
         [_deferredProperties removeObject:aProperty];
@@ -534,7 +535,7 @@ function CamelCaseToHyphenated(camelCase)
 
     [someProperties enumerateObjectsUsingBlock:function(aProperty)
         {
-            var aValue = [self valueForKey:[aProperty localName]],
+            var aValue = [self valueForKeyPath:[aProperty localName]],
                 aValueTransformer = [aProperty valueTransformer];
             if (aValueTransformer && [[aValueTransformer class] allowsReverseTransformation])
                 aValue = [aValueTransformer reverseTransformedValue:aValue];
@@ -895,7 +896,7 @@ var WLRemoteObjectClassKey = "WLRemoteObjectClassKey",
 
         [_remoteProperties enumerateObjectsUsingBlock:function(aProperty, idx)
             {
-                [self setValue:[aCoder decodeObjectForKey:"$" + [aProperty localName]] forKey:[aProperty localName]];
+                [self setValue:[aCoder decodeObjectForKey:"$" + [aProperty localName]] forKeyPath:[aProperty localName]];
             }];
     }
 
@@ -906,7 +907,7 @@ var WLRemoteObjectClassKey = "WLRemoteObjectClassKey",
 {
     [_remoteProperties enumerateObjectsUsingBlock:function(aProperty, idx)
         {
-            [aCoder encodeObject:[self valueForKey:[aProperty localName]] forKey:"$" + [aProperty localName]];
+            [aCoder encodeObject:[self valueForKeyPath:[aProperty localName]] forKey:"$" + [aProperty localName]];
         }];
 }
 
