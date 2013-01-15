@@ -350,12 +350,6 @@ function CamelCaseToHyphenated(camelCase)
     }
 }
 
-- (void)_autoLoad:(CPObject)anObject
-{
-    if ([anObject respondsToSelector:@selector(ensureLoaded)])
-        [anObject ensureLoaded];
-}
-
 - (void)observeValueForKeyPath:(CPString)aKeyPath ofObject:(id)anObject change:(CPDictionary)change context:(id)aContext
 {
     var isBeforeFlag = !![change objectForKey:CPKeyValueChangeNotificationIsPriorKey];
@@ -374,9 +368,9 @@ function CamelCaseToHyphenated(camelCase)
         if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
         {
             if ([after isKindOfClass:[CPArray class]])
-                [after makeObjectsPerformSelector:@selector(_autoLoad:) withObject:anObject];
+                [after makeObjectsPerformSelector:@selector(ensureLoaded)];
             else
-                [self _autoLoad:after];
+                [self ensureLoaded];
         }
     }
 }
