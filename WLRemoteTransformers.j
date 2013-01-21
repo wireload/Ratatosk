@@ -184,7 +184,7 @@ var IsNumberRegExp = new RegExp('^\d+$');
 
     for (var i = 0, count = [values count]; i < count; i++)
     {
-        obj = [super transformedValue:values[i]];
+        var obj = [super transformedValue:values[i]];
         if (obj !== nil)
             [r addObject:obj];
     }
@@ -301,7 +301,7 @@ var IsNumberRegExp = new RegExp('^\d+$');
     var r = [];
     for (var i = 0, count = [values count]; i < count; i++)
     {
-        obj = [super transformedValue:values[i]];
+        var obj = [super transformedValue:values[i]];
         if (obj !== nil)
             [r addObject:obj];
     }
