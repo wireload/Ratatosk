@@ -680,7 +680,7 @@ function CamelCaseToHyphenated(camelCase)
 
 - (void)ensureLoaded
 {
-    if ([self isNew] || [_deferredProperties count] == 0 || contentDownloadAction !== nil)
+    if ([self isNew] || [_deferredProperties count] == 0)
         return;
 
     [self reload];
