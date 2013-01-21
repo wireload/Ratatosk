@@ -870,9 +870,6 @@ function CamelCaseToHyphenated(camelCase)
 
 @end
 
-var WLRemoteObjectClassKey = "WLRemoteObjectClassKey",
-    WLRemoteObjectPkKey = "WLRemoteObjectPkKey";
-
 @implementation WLRemoteObject (CPCoding)
 
 - (id)initWithCoder:(CPCoder)aCoder
