@@ -31,6 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+@import <Foundation/CPDate.j>
+
 @implementation CPDate (UTC)
 {
 

@@ -31,6 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+@import <Foundation/Foundation.j>
+
 var SharedWLRemoteLink      = nil,
     DefaultBaseUrl          = '/api/',
     WLRemoteLinkRetryDelay  = 10; // in seconds

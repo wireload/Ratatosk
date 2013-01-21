@@ -31,6 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+@import <OJUnit/OJTestCase.j>
+
 @import "WLRemoteObject.j"
 @import "WLRemoteTransformers.j"
 
