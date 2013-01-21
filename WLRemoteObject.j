@@ -269,7 +269,7 @@ function CamelCaseToHyphenated(camelCase)
             {
                 var pkValue = js[remotePkName];
                 if ([pkProperty valueTransformer])
-                    pkValue = [[pkProperty valueTransformer] transformedValue:_value];
+                    pkValue = [[pkProperty valueTransformer] transformedValue:pkValue];
 
                 var existingObject = [[self context] registeredObjectForRemoteName:[self remoteName] withPk:pkValue];
 
