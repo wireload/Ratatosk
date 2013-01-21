@@ -258,6 +258,7 @@
 {
     if (self = [super init])
     {
+        count = 5;
         otherObjects = [];
     }
     return self;
