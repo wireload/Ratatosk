@@ -692,9 +692,9 @@ function CamelCaseToHyphenated(camelCase)
 */
 - (void)reload
 {
-    // One download is enough.
+    // We're only interested in most recent GET actions.
     if (contentDownloadAction && ![contentDownloadAction isStarted])
-        return;
+        [contentDownloadAction cancel];
 
     // Path might not be known yet. A load can be scheduled before the object has been created. The path will be
     // set in remoteActionWillBegin when the path must be known.
