@@ -410,3 +410,53 @@ var IsNumberRegExp = new RegExp('^\d+$');
 }
 
 @end
+
+/*!
+    Transform CPDecimalNumbers into strings or floats.
+*/
+@implementation WLDecimalNumberTransformer : CPObject
+{
+    id remoteFormat;
+}
+
++ (id)transformerWithFormat:(Class)aFormat
+{
+    return [[WLDecimalNumberTransformer alloc] initWithFormat:aFormat];
+}
+
++ (boolean)allowsReverseTransformation
+{
+    return YES;
+}
+
++ (Class)transformedValueClass
+{
+    return [CPDecimalNumber class];
+}
+
+- (id)initWithFormat:(Class)aFormat
+{
+    if (self = [super init])
+    {
+        if (!(aFormat == CPNumber || aFormat == CPString))
+            [CPException raise:CPInvalidArgumentException reason:@"Unsupported format."];
+        remoteFormat = aFormat;
+    }
+
+    return self;
+}
+
+- (id)transformedValue:(id)aValue
+{
+    return [CPDecimalNumber decimalNumberWithString:"" + aValue];
+}
+
+- (id)reverseTransformedValue:(id)aValue
+{
+    if (remoteFormat == CPNumber)
+        return [aValue floatValue];
+    else
+        return [aValue stringValue];
+}
+
+@end
