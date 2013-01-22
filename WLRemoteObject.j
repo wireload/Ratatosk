@@ -838,11 +838,7 @@ function CamelCaseToHyphenated(camelCase)
     else if (anAction === contentDownloadAction)
     {
         // Assume whatever was downloaded is the most current info, so nothing gets dirty.
-        [WLRemoteObject setDirtProof:YES];
-        [[self undoManager] disableUndoRegistration];
-        [self updateFromJson:[anAction result]];
-        [[self undoManager] enableUndoRegistration];
-        [WLRemoteObject setDirtProof:NO];
+        [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
 
         contentDownloadAction = nil;
         [self remoteObjectWasLoaded];
