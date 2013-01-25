@@ -347,6 +347,14 @@ function CamelCaseToHyphenated(camelCase)
     {
         [self registerKeyForUndoManagement:[property localName]];
         [self addObserver:self forKeyPath:[property localName] options:nil context:property];
+
+        if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:[property localName]])
+        {
+            if ([[self valueForKeyPath:[property localName]] isKindOfClass:[CPArray class]])
+                [[self valueForKeyPath:[property localName]] makeObjectsPerformSelector:@selector(ensureLoaded)];
+            else
+                [[self valueForKeyPath:[property localName]] ensureLoaded];
+        }
     }
 }
 
