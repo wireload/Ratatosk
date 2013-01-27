@@ -611,6 +611,17 @@ var WLRemoteActionSerial = 1;
     return NO;
 }
 
+- (void)setStatusCode:(int)anInt
+{
+    [self willChangeValueForKey:@"statusCode"];
+
+    // IE 8 and 9 can not handle HTTP responses with status code 204 (No Content) properly.
+    // Code 1223 will be used instead. If this happens, we can safely map it to 204.
+    statusCode = (anInt == 1223) ? 204 : anInt;
+
+    [self didChangeValueForKey:@"statusCode"];
+}
+
 /*!
     Reset the action so that it can be retried. This message is sent after an action fails due to
     a network or a server error and will need to be performed a second time.
@@ -713,8 +724,8 @@ var WLRemoteActionSerial = 1;
     {
         var code = [aResponse statusCode];
         [self setStatusCode:code];
-        if (code < 200 || code > 299)
-            CPLog.error("Received error code %d.", code);
+        if (statusCode < 200 || statusCode > 299)
+            CPLog.error("Received error code %d.", statusCode);
     }
 }
 
