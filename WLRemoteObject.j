@@ -366,19 +366,33 @@ function CamelCaseToHyphenated(camelCase)
 
     if ([_remoteProperties containsObject:aContext])
     {
-        var before = [change valueForKey:CPKeyValueChangeOldKey],
-            after = [change valueForKey:CPKeyValueChangeNewKey],
-            localName = [aContext localName];
-        if (!isEqual(before, after))
-            [self makeDirtyProperty:localName];
-        [_deferredProperties removeObject:aContext];
+        var localName = [aContext localName],
+            kind = [change objectForKey:CPKeyValueChangeKindKey],
+            after = [change objectForKey:CPKeyValueChangeNewKey];
 
-        if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
+        if (kind === CPKeyValueChangeSetting)
         {
-            if ([after isKindOfClass:[CPArray class]])
+            var before = [change objectForKey:CPKeyValueChangeOldKey];
+
+            if (!isEqual(before, after))
+                [self makeDirtyProperty:localName];
+
+            [_deferredProperties removeObject:aContext];
+
+            if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
+            {
+                if ([after isKindOfClass:[CPArray class]])
+                    [after makeObjectsPerformSelector:@selector(ensureLoaded)];
+                else
+                    [self ensureLoaded];
+            }
+        }
+        else if (kind === CPKeyValueChangeInsertion || kind === CPKeyValueChangeReplacement)
+        {
+            [self makeDirtyProperty:localName];
+
+            if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
                 [after makeObjectsPerformSelector:@selector(ensureLoaded)];
-            else
-                [self ensureLoaded];
         }
     }
 }
