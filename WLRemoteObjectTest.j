@@ -42,7 +42,10 @@
 
 - (void)tearDown
 {
+    [[WLRemoteLink sharedRemoteLink] cancelAllActions];
     [[WLRemoteContext sharedRemoteContext] reset];
+    _lastAction = nil;
+    _lastRequest = nil;
 }
 
 - (void)testInstanceByPk
@@ -184,13 +187,32 @@
     // When the remote action is managing its action it should set the path.
     [test1 setName:@"other name"];
     [test1 ensureSaved];
-    CPLog.error([WLRemoteLink sharedRemoteLink].actionQueue);
+    // CPLog.error([WLRemoteLink sharedRemoteLink].actionQueue);
 
     [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
 
     var lastAction = [WLRemoteAction lastAction];
     [self assert:testAction notSame:lastAction];
     [self assert:1 equals:[lastAction path] message:@"remote path of ensureSaved successfully set"];
+}
+
+- (void)testLoadOnly
+{
+    var test = [[LoadOnlyRemoteObject alloc] initWithJson:{'id': 1, 'name': 'test2 name', 'other_objects':
+            [{'id': 5, 'coolness': 17}, {'id': 9}]
+        }];
+
+    [test setName:@"other name"];
+    [test setOtherObjects:[]];
+    // Load only properties track dirtiness but a dirty load only property does not mean the object is dirty.
+    [self assertFalse:[test isDirty]];
+    // Load only objects don't cause server save actions when changed.
+    [test ensureSaved];
+
+    [[WLRemoteLink sharedRemoteLink] setShouldFlushActions:YES];
+
+    var lastAction = [WLRemoteAction lastAction];
+    [self assertFalse:lastAction message:@"expect no action for load only property change"];
 }
 
 - (void)testArchive
@@ -291,6 +313,37 @@
 
 @end
 
+@implementation LoadOnlyRemoteObject : WLRemoteObject
+{
+    CPString    name @accessors;
+    CPArray     otherObjects @accessors;
+}
+
++ (CPArray)remoteProperties
+{
+    return [
+        ['pk', 'id'],
+        ['name', 'name', nil, YES], // load-only
+        ['otherObjects', 'other_objects', [WLForeignObjectsTransformer forObjectClass:OtherRemoteObject], YES], //load-only
+    ];
+}
+
+- (id)init
+{
+    if (self = [super init])
+    {
+        name = @"unnamed";
+        otherObjects = [];
+    }
+    return self;
+}
+
+- (CPString)description
+{
+    return [self UID] + " " + [self pk] + " " + [self name];
+}
+
+@end
 var _lastAction,
     _lastRequest;
 
