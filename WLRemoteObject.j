@@ -93,6 +93,7 @@ function CamelCaseToHyphenated(camelCase)
     BOOL            _suppressAutoSave;
     BOOL            _suppressRemotePropertiesObservation;
     BOOL            _mustSaveAgain;
+    BOOL            _deleted @accessors(property=deleted, getter=isDeleted);
     id              _delegate @accessors(property=delegate);
 
     CPUndoManager   undoManager @accessors;
@@ -224,6 +225,7 @@ function CamelCaseToHyphenated(camelCase)
 {
     if (self = [super init])
     {
+        _deleted = NO;
         _revision = 0;
         _lastSyncedRevision = -1;
         _shouldAutoSave = YES;
@@ -704,6 +706,11 @@ function CamelCaseToHyphenated(camelCase)
     if ([self isNew] || deleteAction !== nil)
         return;
 
+    // Consider the object immediately deleted from here on. This means we shouldn't update it in case
+    // we get any PUT/PATCH responses from activity that was already in flight before ensureDeleted.
+    // (Updating a deleted object could cause it to "come back to life".)
+    [self setDeleted:YES];
+
     // Path might not be known yet. A delete can be scheduled before the object has been created. The path will be
     // set in remoteActionWillBegin when the path must be known.
     deleteAction = [WLRemoteAction schedule:WLRemoteActionDeleteType path:nil delegate:self message:"Delete " + [self description]];
@@ -772,6 +779,7 @@ function CamelCaseToHyphenated(camelCase)
         [anAction setPayload:[self asJSObject]];
         // Assume the action will succeed or retry until it does.
         [self setLastSyncedAt:[CPDate date]];
+        [self setDeleted:NO];
         _lastSyncedRevision = _revision;
     }
     else if (anAction === deleteAction)
@@ -814,6 +822,10 @@ function CamelCaseToHyphenated(camelCase)
 
 - (void)remoteActionDidReceiveResourceRepresentation:(Object)aResult
 {
+    // Ignore updates if the client side version is already deleted.
+    if ([self isDeleted])
+        continue;
+
     [WLRemoteObject setDirtProof:YES];
     [[self undoManager] disableUndoRegistration];
     // Take any data received from the POST/PUT/PATCH and update the object correspondingly -
