@@ -798,7 +798,7 @@ function CamelCaseToHyphenated(camelCase)
 */
 - (boolean)canSave
 {
-    return !!pk;
+    return !!pk && [self isDirty];
 }
 
 /*!
