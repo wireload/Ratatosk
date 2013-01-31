@@ -572,7 +572,12 @@ var WLRemoteActionSerial = 1;
     }
     _didCallWillBegin = YES;
 
-    [self makeRequest];
+    // If remoteActionWillBegin cancelled us, never mind calling makeRequest, just hand control back
+    // to the queue.
+    if (done)
+        [[WLRemoteLink sharedRemoteLink] maybeExecute];
+    else
+        [self makeRequest];
 }
 
 - (BOOL)isStarted
