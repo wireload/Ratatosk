@@ -894,6 +894,9 @@ function CamelCaseToHyphenated(camelCase)
 
 - (void)remoteActionWillBegin:(WLRemoteAction)anAction
 {
+    if (![_actions count] || [_actions objectAtIndex:0] !== anAction)
+        return;
+
     switch ([anAction type])
     {
         case WLRemoteActionPostType:
@@ -963,6 +966,9 @@ function CamelCaseToHyphenated(camelCase)
 
 - (void)remoteActionDidFinish:(WLRemoteAction)anAction
 {
+    if (![_actions count] || [_actions objectAtIndex:0] !== anAction)
+        return;
+
     switch ([anAction type])
     {
         case WLRemoteActionPostType:
