@@ -92,7 +92,6 @@ function CamelCaseToHyphenated(camelCase)
 
     CPMutableArray  _actions;
     CPMutableArray  _loadActions;
-    CPMutableArray  _saveActions;
 
     CPUndoManager   undoManager @accessors;
 }
@@ -234,7 +233,6 @@ function CamelCaseToHyphenated(camelCase)
         lastSyncedAt = [CPDate distantPast];
         _actions = [CPMutableArray array];
         _loadActions = [CPMutableArray array];
-        _saveActions = [CPMutableArray array];
 
         var remoteProperties = [],
             otherProperties = [[self class] remoteProperties];
@@ -887,17 +885,11 @@ function CamelCaseToHyphenated(camelCase)
     if (![self needsSave])
         return;
 
-    // We're only interested in most recent actions.
-    [_saveActions makeObjectsPerformSelector:@selector(cancel)];
-    [_saveActions removeAllObjects];
-
     var dirtDescription = [[[[self dirtyProperties] valueForKeyPath:@"localName"] allObjects] componentsJoinedByString:@", "];
 
     CPLog.info("Save " + [self description] + " dirt: " + dirtDescription);
 
-    var action = [WLRemoteAction schedule:[[[self context] remoteLink] saveActionType] path:nil delegate:self message:"Save " + [self description]];
-    [_actions addObject:action];
-    [_saveActions addObject:action];
+    [_actions addObject:[WLRemoteAction schedule:[[[self context] remoteLink] saveActionType] path:nil delegate:self message:"Save " + [self description]]];
 }
 
 - (void)remoteActionWillBegin:(WLRemoteAction)anAction
@@ -940,8 +932,6 @@ function CamelCaseToHyphenated(camelCase)
                 // Assume the action will succeed or retry until it does.
                 [self setLastSyncedAt:[CPDate date]];
                 _lastSyncedRevision = _revision;
-                // Save action scheduled for execution should not be cancelled.
-                [_saveActions removeLastObject];
             }
             else if (!pk)
                 CPLog.error("Attempt to save non created object " + [self description]);
