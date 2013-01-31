@@ -84,16 +84,14 @@ function CamelCaseToHyphenated(camelCase)
     int             _revision;
     int             _lastSyncedRevision;
     CPDate          lastSyncedAt @accessors;
-    WLRemoteAction  createAction;
-    WLRemoteAction  saveAction;
-    WLRemoteAction  deleteAction;
-    WLRemoteAction  contentDownloadAction;
     BOOL            _shouldAutoSave @accessors(property=shouldAutoSave);
     BOOL            _shouldAutoLoad @accessors(property=shouldAutoLoad);
     BOOL            _suppressAutoSave;
     BOOL            _suppressRemotePropertiesObservation;
-    BOOL            _mustSaveAgain;
     id              _delegate @accessors(property=delegate);
+
+    CPMutableArray  _actions;
+    CPMutableArray  _loadActions;
 
     CPUndoManager   undoManager @accessors;
 }
@@ -233,6 +231,8 @@ function CamelCaseToHyphenated(camelCase)
         _propertyLastRevision = {};
         _deferredProperties = [CPSet set];
         lastSyncedAt = [CPDate distantPast];
+        _actions = [CPMutableArray array];
+        _loadActions = [CPMutableArray array];
 
         var remoteProperties = [],
             otherProperties = [[self class] remoteProperties];
@@ -656,6 +656,103 @@ function CamelCaseToHyphenated(camelCase)
 }
 
 /*!
+    Create is only needed if (object is not created yet) and (no create already scheduled or delete is scheduled afterwards).
+*/
+- (boolean)needsCreate
+{
+    var needsCreate = [self isNew];
+    [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
+        {
+            var type = [anAction type];
+
+            if (type === WLRemoteActionPostType)
+            {
+                needsCreate = NO;
+                aStop(YES);
+            }
+            else if (type === WLRemoteActionDeleteType)
+            {
+                needsCreate = YES;
+                aStop(YES);
+            }
+        }];
+    return needsCreate;
+}
+
+/*!
+    Delete is only needed if (object is already created) and (no delete already scheduled or create is scheduled afterwards).
+*/
+- (boolean)needsDelete
+{
+    var needsDelete = ![self isNew];
+    [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
+        {
+            var type = [anAction type];
+
+            if (type === WLRemoteActionPostType)
+            {
+                needsDelete = YES;
+                aStop(YES);
+            }
+            else if (type === WLRemoteActionDeleteType)
+            {
+                needsDelete = NO;
+                aStop(YES);
+            }
+        }];
+    return needsDelete;
+}
+
+/*!
+    Load is only needed if object is not deleted.
+*/
+- (boolean)needsLoad
+{
+    var needsLoad = ![self isNew] && [_deferredProperties count];
+    [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
+        {
+            var type = [anAction type];
+
+            if (type === WLRemoteActionPostType)
+                aStop(YES);
+            else if (type === WLRemoteActionDeleteType)
+            {
+                needsLoad = NO;
+                aStop(YES);
+            }
+        }];
+    return needsLoad;
+}
+
+/*!
+    Save is only needed if object is dirty and no another create/save action is executing and object is not deleted.
+*/
+- (boolean)needsSave
+{
+    var needsSave = [self isDirty],
+        saveActionType = [[[self context] remoteLink] saveActionType];
+    [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
+        {
+            var type = [anAction type],
+                isStarted = [anAction isStarted];
+
+            if (type === WLRemoteActionPostType || type === saveActionType)
+            {
+                if (!isStarted)
+                    needsSave = NO;
+
+                aStop(YES);
+            }
+            else if (type === WLRemoteActionDeleteType)
+            {
+                needsSave = NO;
+                aStop(YES);
+            }
+        }];
+    return needsSave;
+}
+
+/*!
     Create or recreate this object remotely.
 */
 - (void)create
@@ -681,7 +778,7 @@ function CamelCaseToHyphenated(camelCase)
 
 - (void)ensureCreated
 {
-    if (![self isNew] || createAction !== nil)
+    if (![self needsCreate])
         return;
 
     // FIXME Should this be here or in init somewhere? In init we don't yet know if
@@ -696,22 +793,22 @@ function CamelCaseToHyphenated(camelCase)
     // to the server.
     [self makeAllDirty];
 
-    createAction = [WLRemoteAction schedule:WLRemoteActionPostType path:[self postPath] delegate:self message:"Create " + [self description]];
+    [_actions addObject:[WLRemoteAction schedule:WLRemoteActionPostType path:[self postPath] delegate:self message:"Create " + [self description]]];
 }
 
 - (void)ensureDeleted
 {
-    if ([self isNew] || deleteAction !== nil)
+    if (![self needsDelete])
         return;
 
     // Path might not be known yet. A delete can be scheduled before the object has been created. The path will be
     // set in remoteActionWillBegin when the path must be known.
-    deleteAction = [WLRemoteAction schedule:WLRemoteActionDeleteType path:nil delegate:self message:"Delete " + [self description]];
+    [_actions addObject:[WLRemoteAction schedule:WLRemoteActionDeleteType path:nil delegate:self message:"Delete " + [self description]]];
 }
 
 - (void)ensureLoaded
 {
-    if ([self isNew] || [_deferredProperties count] == 0)
+    if (![self needsLoad])
         return;
 
     [self reload];
@@ -724,91 +821,77 @@ function CamelCaseToHyphenated(camelCase)
 - (void)reload
 {
     // We're only interested in most recent GET actions.
-    if (contentDownloadAction && ![contentDownloadAction isStarted])
-        [contentDownloadAction cancel];
+    [_loadActions makeObjectsPerformSelector:@selector(cancel)];
+    [_loadActions removeAllObjects];
 
     // Path might not be known yet. A load can be scheduled before the object has been created. The path will be
     // set in remoteActionWillBegin when the path must be known.
-    contentDownloadAction = [WLRemoteAction schedule:WLRemoteActionGetType path:nil delegate:self message:"Loading " + [self description]];
+    var action = [WLRemoteAction schedule:WLRemoteActionGetType path:nil delegate:self message:"Loading " + [self description]];
+    [_actions addObject:action];
+    [_loadActions addObject:action];
 }
 
 - (void)ensureSaved
 {
-    if (![self isDirty])
+    if (![self needsSave])
         return;
-
-    // If a save action is already in the pipe, relax. Same if the object is about to be created - we'll transfer up to date
-    // information once the creation action fires.
-    if (createAction !== nil || saveAction !== nil)
-    {
-        if (![createAction isStarted] && ![saveAction isStarted])
-            return;
-
-        /*
-            The ongoing save is saving stale information. We must ensure
-            another save will be scheduled after this one.
-        */
-        _mustSaveAgain = YES;
-        return;
-    }
 
     var dirtDescription = [[[[self dirtyProperties] valueForKeyPath:@"localName"] allObjects] componentsJoinedByString:@", "];
 
     CPLog.info("Save " + [self description] + " dirt: " + dirtDescription);
 
-    saveAction = [WLRemoteAction schedule:[[[self context] remoteLink] saveActionType] path:nil delegate:self message:"Save " + [self description]];
+    [_actions addObject:[WLRemoteAction schedule:[[[self context] remoteLink] saveActionType] path:nil delegate:self message:"Save " + [self description]]];
 }
 
 - (void)remoteActionWillBegin:(WLRemoteAction)anAction
 {
-    if (anAction === createAction)
+    switch ([anAction type])
     {
-        if (pk)
-        {
-            CPLog.error("Attempt to create an existing object");
-            return;
-        }
+        case WLRemoteActionPostType:
+            if (!pk)
+            {
+                [anAction setPayload:[self asJSObject]];
+                // Assume the action will succeed or retry until it does.
+                [self setLastSyncedAt:[CPDate date]];
+                _lastSyncedRevision = _revision;
+            }
+            else
+                CPLog.error("Attempt to create an existing object");
+            break;
+        case WLRemoteActionDeleteType:
+            if (pk)
+            {
+                [anAction setPayload:nil];
+                // Assume the action will succeed or retry until it does.
+                [self setLastSyncedAt:[CPDate date]];
+                _lastSyncedRevision = _revision;
+                [anAction setPath:[self deletePath]];
+            }
+            else
+                CPLog.error("Attempt to delete a non existant object");
+            break;
+        case [[[self context] remoteLink] saveActionType]:
+            if (pk)
+            {
+                var patchAction = [anAction type] === WLRemoteActionPatchType;
 
-        [anAction setPayload:[self asJSObject]];
-        // Assume the action will succeed or retry until it does.
-        [self setLastSyncedAt:[CPDate date]];
-        _lastSyncedRevision = _revision;
-    }
-    else if (anAction === deleteAction)
-    {
-        if (pk === nil)
-        {
-            CPLog.error("Attempt to delete a non existant object");
-            return;
-        }
+                [anAction setMessage:"Saving " + [self description]];
+                [anAction setPayload:patchAction ? [self asPatchJSObject] : [self asJSObject]];
+                [anAction setPath:patchAction ? [self patchPath] : [self putPath]];
 
-        [anAction setPayload:nil];
-        // Assume the action will succeed or retry until it does.
-        [self setLastSyncedAt:[CPDate date]];
-        _lastSyncedRevision = _revision;
-        [anAction setPath:[self deletePath]];
-    }
-    else if (anAction === saveAction)
-    {
-        if (!pk)
-        {
-            CPLog.error("Attempt to save non created object " + [self description]);
-            return;
-        }
+                // Assume the action will succeed or retry until it does.
+                [self setLastSyncedAt:[CPDate date]];
+                _lastSyncedRevision = _revision;
+            }
+            else
+                CPLog.error("Attempt to save non created object " + [self description]);
+            break;
 
-        var patchAction = [anAction type] === WLRemoteActionPatchType;
-
-        [anAction setMessage:"Saving " + [self description]];
-        [anAction setPayload:patchAction ? [self asPatchJSObject] : [self asJSObject]];
-        [anAction setPath:patchAction ? [self patchPath] : [self putPath]];
-
-        // Assume the action will succeed or retry until it does.
-        [self setLastSyncedAt:[CPDate date]];
-        _lastSyncedRevision = _revision;
-    }
-    else if (anAction === contentDownloadAction)
-    {
-        [anAction setPath:[self getPath]];
+        case WLRemoteActionGetType:
+            [anAction setPath:[self getPath]];
+            break;
+        default:
+            CPLog.error("Unexpected action: " + [anAction description]);
     }
 }
 
@@ -829,51 +912,51 @@ function CamelCaseToHyphenated(camelCase)
 
 - (void)remoteActionDidFinish:(WLRemoteAction)anAction
 {
-    if (anAction === createAction)
+    switch ([anAction type])
     {
-        [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
-
-        createAction = nil;
-        if ([_delegate respondsToSelector:@selector(remoteObjectWasCreated:)])
-            [_delegate remoteObjectWasCreated:self];
-    }
-    else if (anAction === deleteAction)
-    {
-        // The previous PK is now gone.
-        [self setPk:nil];
-
-        // There is nothing to save anymore.
-        [saveAction cancel];
-        saveAction = nil;
-
-        // After the object has been deleted, the next call to 'ensureCreated' will
-        // create a new object. When that creation happens all the data should be
-        // considered dirty to ensure it gets sent with the creation.
-        [self makeAllDirty];
-
-        deleteAction = nil;
-        [self remoteObjectWasDeleted];
-    }
-    else if (anAction === saveAction)
-    {
-        if ([anAction result])
+        case WLRemoteActionPostType:
             [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
 
-        saveAction = nil;
-        if (_mustSaveAgain)
-        {
-            _mustSaveAgain = NO;
-            [self ensureSaved];
-        }
-    }
-    else if (anAction === contentDownloadAction)
-    {
-        // Assume whatever was downloaded is the most current info, so nothing gets dirty.
-        [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
+            if ([_delegate respondsToSelector:@selector(remoteObjectWasCreated:)])
+                [_delegate remoteObjectWasCreated:self];
+            break;
+        case WLRemoteActionDeleteType:
+            // The previous PK is now gone.
+            [self setPk:nil];
 
-        contentDownloadAction = nil;
-        [self remoteObjectWasLoaded];
+            // After the object has been deleted, the next call to 'ensureCreated' will
+            // create a new object. When that creation happens all the data should be
+            // considered dirty to ensure it gets sent with the creation.
+            [self makeAllDirty];
+            [self remoteObjectWasDeleted];
+            break;
+        case [[[self context] remoteLink] saveActionType]:
+            if (pk)
+            {
+                var patchAction = [anAction type] === WLRemoteActionPatchType;
+
+                [anAction setMessage:"Saving " + [self description]];
+                [anAction setPayload:patchAction ? [self asPatchJSObject] : [self asJSObject]];
+                [anAction setPath:patchAction ? [self patchPath] : [self putPath]];
+
+                // Assume the action will succeed or retry until it does.
+                [self setLastSyncedAt:[CPDate date]];
+                _lastSyncedRevision = _revision;
+            }
+            else
+                CPLog.error("Attempt to save non created object " + [self description]);
+            break;
+        case WLRemoteActionGetType:
+            // Assume whatever was downloaded is the most current info, so nothing gets dirty.
+            [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
+            [self remoteObjectWasLoaded];
+            [_loadActions removeLastObject];
+            break;
+        default:
+            CPLog.error("Unexpected action: " + [anAction description]);
     }
+
+    [_actions removeLastObject];
 }
 
 - (void)remoteObjectWasLoaded
