@@ -92,6 +92,7 @@ function CamelCaseToHyphenated(camelCase)
 
     CPMutableArray  _actions;
     CPMutableArray  _loadActions;
+    CPMutableArray  _saveActions;
 
     CPUndoManager   undoManager @accessors;
 }
@@ -233,6 +234,7 @@ function CamelCaseToHyphenated(camelCase)
         lastSyncedAt = [CPDate distantPast];
         _actions = [CPMutableArray array];
         _loadActions = [CPMutableArray array];
+        _saveActions = [CPMutableArray array];
 
         var remoteProperties = [],
             otherProperties = [[self class] remoteProperties];
@@ -725,22 +727,21 @@ function CamelCaseToHyphenated(camelCase)
 }
 
 /*!
+    Determines whether object needs to be saved at schedule action time.
+
     Save is only needed if object is dirty and no another create/save action is executing and object is not deleted.
 */
 - (boolean)needsSave
 {
-    var needsSave = [self isDirty],
+    var needsSave = ![self isNew] && [self isDirty],
         saveActionType = [[[self context] remoteLink] saveActionType];
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
-            var type = [anAction type],
-                isStarted = [anAction isStarted];
+            var type = [anAction type];
 
             if (type === WLRemoteActionPostType || type === saveActionType)
             {
-                if (!isStarted)
-                    needsSave = NO;
-
+                needsSave = ![anAction isStarted];
                 aStop(YES);
             }
             else if (type === WLRemoteActionDeleteType)
@@ -820,7 +821,7 @@ function CamelCaseToHyphenated(camelCase)
 */
 - (void)reload
 {
-    // We're only interested in most recent GET actions.
+    // We're only interested in most recent actions.
     [_loadActions makeObjectsPerformSelector:@selector(cancel)];
     [_loadActions removeAllObjects];
 
@@ -836,11 +837,17 @@ function CamelCaseToHyphenated(camelCase)
     if (![self needsSave])
         return;
 
+    // We're only interested in most recent actions.
+    [_saveActions makeObjectsPerformSelector:@selector(cancel)];
+    [_saveActions removeAllObjects];
+
     var dirtDescription = [[[[self dirtyProperties] valueForKeyPath:@"localName"] allObjects] componentsJoinedByString:@", "];
 
     CPLog.info("Save " + [self description] + " dirt: " + dirtDescription);
 
-    [_actions addObject:[WLRemoteAction schedule:[[[self context] remoteLink] saveActionType] path:nil delegate:self message:"Save " + [self description]]];
+    var action = [WLRemoteAction schedule:[[[self context] remoteLink] saveActionType] path:nil delegate:self message:"Save " + [self description]];
+    [_actions addObject:action];
+    [_saveActions addObject:action];
 }
 
 - (void)remoteActionWillBegin:(WLRemoteAction)anAction
@@ -854,6 +861,8 @@ function CamelCaseToHyphenated(camelCase)
                 // Assume the action will succeed or retry until it does.
                 [self setLastSyncedAt:[CPDate date]];
                 _lastSyncedRevision = _revision;
+                // Load action scheduled for execution should not be cancelled.
+                [_loadActions removeLastObject];
             }
             else
                 CPLog.error("Attempt to create an existing object");
@@ -950,7 +959,6 @@ function CamelCaseToHyphenated(camelCase)
             // Assume whatever was downloaded is the most current info, so nothing gets dirty.
             [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
             [self remoteObjectWasLoaded];
-            [_loadActions removeLastObject];
             break;
         default:
             CPLog.error("Unexpected action: " + [anAction description]);
