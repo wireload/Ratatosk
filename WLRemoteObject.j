@@ -658,6 +658,8 @@ function CamelCaseToHyphenated(camelCase)
 }
 
 /*!
+    Determines whether object needs to be created at schedule action time.
+
     Create is only needed if (object is not created yet) and (no create already scheduled or delete is scheduled afterwards).
 */
 - (boolean)needsCreate
@@ -682,6 +684,8 @@ function CamelCaseToHyphenated(camelCase)
 }
 
 /*!
+    Determines whether object needs to be deleted at schedule action time.
+
     Delete is only needed if (object is already created) and (no delete already scheduled or create is scheduled afterwards).
 */
 - (boolean)needsDelete
@@ -706,6 +710,8 @@ function CamelCaseToHyphenated(camelCase)
 }
 
 /*!
+    Determines whether object needs to be loaded at schedule action time.
+
     Load is only needed if object is not deleted.
 */
 - (boolean)needsLoad
