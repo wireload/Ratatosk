@@ -906,11 +906,15 @@ function CamelCaseToHyphenated(camelCase)
                 // Assume the action will succeed or retry until it does.
                 [self setLastSyncedAt:[CPDate date]];
                 _lastSyncedRevision = _revision;
-                // Load action scheduled for execution should not be cancelled.
-                [_loadActions removeLastObject];
             }
-            else if (pk)
-                CPLog.error("Attempt to create an existing object");
+            else
+            {
+                if (pk)
+                    CPLog.error("Attempt to create an existing object");
+
+                [anAction cancel];
+                [_actions removeObjectAtIndex:0];
+            }
             break;
         case WLRemoteActionDeleteType:
             if ([self canDelete])
@@ -921,8 +925,14 @@ function CamelCaseToHyphenated(camelCase)
                 _lastSyncedRevision = _revision;
                 [anAction setPath:[self deletePath]];
             }
-            else if (!pk)
-                CPLog.error("Attempt to delete a non existant object");
+            else
+            {
+                if (!pk)
+                    CPLog.error("Attempt to delete a non existant object");
+
+                [anAction cancel];
+                [_actions removeObjectAtIndex:0];
+            }
             break;
         case [[[self context] remoteLink] saveActionType]:
             if ([self canSave])
@@ -936,13 +946,28 @@ function CamelCaseToHyphenated(camelCase)
                 [self setLastSyncedAt:[CPDate date]];
                 _lastSyncedRevision = _revision;
             }
-            else if (!pk)
-                CPLog.error("Attempt to save non created object " + [self description]);
-            break;
+            else
+            {
+                if (!pk)
+                    CPLog.error("Attempt to save non created object " + [self description]);
 
+                [anAction cancel];
+                [_actions removeObjectAtIndex:0];
+            }
+            break;
         case WLRemoteActionGetType:
             if ([self canLoad])
                 [anAction setPath:[self getPath]];
+            else
+            {
+                if (!pk)
+                    CPLog.error("Attempt to load non created object " + [self description]);
+
+                [anAction cancel];
+                [_actions removeObjectAtIndex:0];
+            }
+            // Load action scheduled for execution should not be cancelled.
+            [_loadActions removeObjectAtIndex:0];
             break;
         default:
             CPLog.error("Unexpected action: " + [anAction description]);
@@ -1012,7 +1037,7 @@ function CamelCaseToHyphenated(camelCase)
             CPLog.error("Unexpected action: " + [anAction description]);
     }
 
-    [_actions removeLastObject];
+    [_actions removeObjectAtIndex:0];
 }
 
 - (void)remoteObjectWasLoaded
