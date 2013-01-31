@@ -760,6 +760,38 @@ function CamelCaseToHyphenated(camelCase)
 }
 
 /*!
+    Determines whether object can be created at request action time.
+*/
+- (boolean)canCreate
+{
+    return !pk;
+}
+
+/*!
+    Determines whether object can be deleted at request action time.
+*/
+- (boolean)canDelete
+{
+    return !!pk;
+}
+
+/*!
+    Determines whether object can be loaded at request action time.
+*/
+- (boolean)canLoad
+{
+    return !!pk;
+}
+
+/*!
+    Determines whether object can be saved at request action time.
+*/
+- (boolean)canSave
+{
+    return !!pk;
+}
+
+/*!
     Create or recreate this object remotely.
 */
 - (void)create
@@ -861,7 +893,7 @@ function CamelCaseToHyphenated(camelCase)
     switch ([anAction type])
     {
         case WLRemoteActionPostType:
-            if (!pk)
+            if ([self canCreate])
             {
                 [anAction setPayload:[self asJSObject]];
                 // Assume the action will succeed or retry until it does.
@@ -870,11 +902,11 @@ function CamelCaseToHyphenated(camelCase)
                 // Load action scheduled for execution should not be cancelled.
                 [_loadActions removeLastObject];
             }
-            else
+            else if (pk)
                 CPLog.error("Attempt to create an existing object");
             break;
         case WLRemoteActionDeleteType:
-            if (pk)
+            if ([self canDelete])
             {
                 [anAction setPayload:nil];
                 // Assume the action will succeed or retry until it does.
@@ -882,28 +914,30 @@ function CamelCaseToHyphenated(camelCase)
                 _lastSyncedRevision = _revision;
                 [anAction setPath:[self deletePath]];
             }
-            else
+            else if (!pk)
                 CPLog.error("Attempt to delete a non existant object");
             break;
         case [[[self context] remoteLink] saveActionType]:
-            if (pk)
+            if ([self canSave])
             {
                 var patchAction = [anAction type] === WLRemoteActionPatchType;
 
                 [anAction setMessage:"Saving " + [self description]];
                 [anAction setPayload:patchAction ? [self asPatchJSObject] : [self asJSObject]];
                 [anAction setPath:patchAction ? [self patchPath] : [self putPath]];
-
                 // Assume the action will succeed or retry until it does.
                 [self setLastSyncedAt:[CPDate date]];
                 _lastSyncedRevision = _revision;
+                // Save action scheduled for execution should not be cancelled.
+                [_saveActions removeLastObject];
             }
-            else
+            else if (!pk)
                 CPLog.error("Attempt to save non created object " + [self description]);
             break;
 
         case WLRemoteActionGetType:
-            [anAction setPath:[self getPath]];
+            if ([self canLoad])
+                [anAction setPath:[self getPath]];
             break;
         default:
             CPLog.error("Unexpected action: " + [anAction description]);
