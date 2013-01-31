@@ -667,6 +667,9 @@ function CamelCaseToHyphenated(camelCase)
     var needsCreate = [self isNew];
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
+            if ([anAction isDone])
+                return;
+
             var type = [anAction type];
 
             if (type === WLRemoteActionPostType)
@@ -693,6 +696,9 @@ function CamelCaseToHyphenated(camelCase)
     var needsDelete = ![self isNew];
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
+            if ([anAction isDone])
+                return;
+
             var type = [anAction type];
 
             if (type === WLRemoteActionPostType)
@@ -719,6 +725,9 @@ function CamelCaseToHyphenated(camelCase)
     var needsLoad = ![self isNew] && [_deferredProperties count];
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
+            if ([anAction isDone])
+                return;
+
             var type = [anAction type];
 
             if (type === WLRemoteActionPostType)
@@ -743,6 +752,9 @@ function CamelCaseToHyphenated(camelCase)
         saveActionType = [[[self context] remoteLink] saveActionType];
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
+            if ([anAction isDone])
+                return;
+
             var type = [anAction type];
 
             if (type === WLRemoteActionPostType || type === saveActionType)
