@@ -871,6 +871,7 @@ function CamelCaseToHyphenated(camelCase)
 {
     // We're only interested in most recent actions.
     [_loadActions makeObjectsPerformSelector:@selector(cancel)];
+    [_actions removeObjectsInArray:_loadActions];
     [_loadActions removeAllObjects];
 
     // Path might not be known yet. A load can be scheduled before the object has been created. The path will be
