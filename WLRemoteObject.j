@@ -742,12 +742,13 @@ function CamelCaseToHyphenated(camelCase)
 /*!
     Determines whether object needs to be saved at schedule action time.
 
-    Save is only needed if object is dirty and no another create/save action is executing and object is not deleted.
+    Save is only needed if object is dirty and another create/save action (if any) is executing and object is not deleted.
 */
 - (boolean)needsSave
 {
     var needsSave = ![self isNew] && [self isDirty],
         saveActionType = [[[self context] remoteLink] saveActionType];
+
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
             if ([anAction isDone])
@@ -757,7 +758,7 @@ function CamelCaseToHyphenated(camelCase)
 
             if (type === WLRemoteActionPostType || type === saveActionType)
             {
-                needsSave = ![anAction isStarted];
+                needsSave = needsSave || [anAction isStarted];
                 aStop(YES);
             }
             else if (type === WLRemoteActionDeleteType)
