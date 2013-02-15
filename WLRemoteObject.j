@@ -1015,20 +1015,8 @@ function CamelCaseToHyphenated(camelCase)
             [self remoteObjectWasDeleted];
             break;
         case [[[self context] remoteLink] saveActionType]:
-            if (pk)
-            {
-                var patchAction = [anAction type] === WLRemoteActionPatchType;
-
-                [anAction setMessage:"Saving " + [self description]];
-                [anAction setPayload:patchAction ? [self asPatchJSObject] : [self asJSObject]];
-                [anAction setPath:patchAction ? [self patchPath] : [self putPath]];
-
-                // Assume the action will succeed or retry until it does.
-                [self setLastSyncedAt:[CPDate date]];
-                _lastSyncedRevision = _revision;
-            }
-            else
-                CPLog.error("Attempt to save non created object " + [self description]);
+            if ([anAction result])
+                [self remoteActionDidReceiveResourceRepresentation:[anAction result]];
             break;
         case WLRemoteActionGetType:
             // Assume whatever was downloaded is the most current info, so nothing gets dirty.
