@@ -198,7 +198,7 @@
 
 - (void)testLoadOnly
 {
-    var test = [[LoadOnlyRemoteObject alloc] initWithJson:{'id': 1, 'name': 'test2 name', 'other_objects':
+    var test = [[LoadOnlyRemoteObject alloc] initWithJson:{'id': 1, 'count': 5, 'name': 'test2 name', 'other_objects':
             [{'id': 5, 'coolness': 17}, {'id': 9}]
         }];
 
@@ -213,6 +213,11 @@
 
     var lastAction = [WLRemoteAction lastAction];
     [self assertFalse:lastAction message:@"expect no action for load only property change"];
+
+    // Load only properties should not be included when sending PATCHes.
+    [test setCount:6];
+    var patchVersion = JSON.stringify([test asPatchJSObject]);
+    [self assert:'{"count":6}' equals:patchVersion message:"only count to patch"];
 }
 
 - (void)testArchive
@@ -316,6 +321,7 @@
 @implementation LoadOnlyRemoteObject : WLRemoteObject
 {
     CPString    name @accessors;
+    long        count @accessors;
     CPArray     otherObjects @accessors;
 }
 
@@ -323,6 +329,7 @@
 {
     return [
         ['pk', 'id'],
+        ['count'],
         ['name', 'name', nil, YES], // load-only
         ['otherObjects', 'other_objects', [WLForeignObjectsTransformer forObjectClass:OtherRemoteObject], YES], //load-only
     ];
@@ -332,6 +339,7 @@
 {
     if (self = [super init])
     {
+        count = 5;
         name = @"unnamed";
         otherObjects = [];
     }
@@ -344,6 +352,30 @@
 }
 
 @end
+
+@implementation AutoTransformerObject : WLRemoteObject
+{
+    CPDate      date @accessors;
+}
+
++ (CPArray)remoteProperties
+{
+    return [
+        ['pk', 'id'],
+        ['date'],
+    ];
+}
+
+- (id)init
+{
+    if (self = [super init])
+    {
+        date = [CPDate dateWithTimeIntervalSince1970:123456789];
+    }
+}
+
+@end
+
 var _lastAction,
     _lastRequest;
 
