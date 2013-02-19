@@ -355,14 +355,29 @@ function CamelCaseToHyphenated(camelCase)
         [self registerKeyForUndoManagement:property];
         [self addObserver:self forKeyPath:[property localName] options:nil context:property];
 
-        if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:[property localName]])
-        {
-            if ([[self valueForKeyPath:[property localName]] isKindOfClass:[CPArray class]])
-                [[self valueForKeyPath:[property localName]] makeObjectsPerformSelector:@selector(ensureLoaded)];
-            else
-                [[self valueForKeyPath:[property localName]] ensureLoaded];
-        }
+        [self maybeAutoLoad:property];
     }
+}
+
+- (void)maybeAutoLoad:(WLRemoteProperty)aProperty
+{
+    var localName = [aProperty localName];
+    if (!_shouldAutoLoad || ![[self class] automaticallyLoadsRemoteObjectsForKey:localName])
+        return;
+
+    var propertyValue = [self valueForKeyPath:localName];
+
+    // Don't perform the autoload right away. Wait until the end of the current RL iteration.
+    // This ensures that if the object in fact is in the process of being loaded (and perhaps
+    // caused this maybeAutoLoad: call itself as a side effect), we give it time to finish
+    // that loading process so that ensureLoaded ends up doing nothing. If on the other hand
+    // the object was /not/ in the process of being loaded, waiting a moment with calling
+    // ensureLoaded is not dangerous since loading is asynchronous and no-one can expect
+    // immediate autoloading.
+    if ([propertyValue isKindOfClass:[CPArray class]])
+        [[CPRunLoop currentRunLoop] performSelector:@selector(makeObjectsPerformSelector:) target:propertyValue argument:@selector(ensureLoaded) order:0 modes:[CPDefaultRunLoopMode]];
+    else
+        [[CPRunLoop currentRunLoop] performSelector:@selector(ensureLoaded) target:propertyValue argument:nil order:0 modes:[CPDefaultRunLoopMode]];
 }
 
 - (void)observeValueForKeyPath:(CPString)aKeyPath ofObject:(id)anObject change:(CPDictionary)change context:(id)aContext
@@ -386,20 +401,13 @@ function CamelCaseToHyphenated(camelCase)
 
             [_deferredProperties removeObject:aContext];
 
-            if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
-            {
-                if ([after isKindOfClass:[CPArray class]])
-                    [after makeObjectsPerformSelector:@selector(ensureLoaded)];
-                else
-                    [self ensureLoaded];
-            }
+            [self maybeAutoLoad:aContext];
         }
         else if (kind === CPKeyValueChangeInsertion || kind === CPKeyValueChangeReplacement)
         {
             [self makeDirtyProperty:localName];
 
-            if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
-                [after makeObjectsPerformSelector:@selector(ensureLoaded)];
+            [self maybeAutoLoad:aContext];
         }
     }
 }
@@ -720,6 +728,7 @@ function CamelCaseToHyphenated(camelCase)
 - (boolean)needsLoad
 {
     var needsLoad = ![self isNew] && [_deferredProperties count];
+    console.log(self + "" + _deferredProperties);
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
             if ([anAction isDone])
