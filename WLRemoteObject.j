@@ -509,11 +509,9 @@ function CamelCaseToHyphenated(camelCase)
 
 - (void)updateFromJson:js
 {
-    var property = nil,
-        objectEnumerator = [_remoteProperties objectEnumerator];
-
-    while (property = [objectEnumerator nextObject])
-        [self updateFromJson:js remoteProperty:property];
+    [_remoteProperties enumerateObjectsUsingBlock:function(aProperty) {
+        [self updateFromJson:js remoteProperty:aProperty];
+    }];
 }
 
 - (void)updateFromJson:js preservingDirtyProperties:(BOOL)shouldPreserveDirty
@@ -533,6 +531,7 @@ function CamelCaseToHyphenated(camelCase)
 - (void)updateFromJson:js remoteProperty:(RemoteProperty)aProperty
 {
     var remoteName = [aProperty remoteName];
+
     if (js[remoteName] !== undefined)
     {
         var after = js[remoteName],
