@@ -462,6 +462,11 @@ function CamelCaseToHyphenated(camelCase)
     [_deferredProperties addObject:property];
 }
 
+- (CPSet)deferredProperties
+{
+    return _deferredProperties;
+}
+
 - (BOOL)isDirty
 {
     return [[self dirtyProperties] count] > 0;
@@ -727,8 +732,7 @@ function CamelCaseToHyphenated(camelCase)
 */
 - (boolean)needsLoad
 {
-    var needsLoad = ![self isNew] && [_deferredProperties count];
-    console.log(self + "" + _deferredProperties);
+    var needsLoad = ![self isNew] && [[self deferredProperties] count];
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
             if ([anAction isDone])
