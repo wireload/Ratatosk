@@ -322,13 +322,27 @@ WLRemoteLinkStateRequestFailureError    = 2;
     [self setHasSaveActions:r];
 }
 
-- (void)maybeExecute
+- (BOOL)willDelayAction
+{
+    if (!updateDelay || shouldFlushActions)
+        return NO;
+
+    var nextAction = [self nextAction];
+
+    if ([nextAction isExecuting] || [nextAction isDone])
+        return NO;
+
+    // Are we actually done delaying?
+    if (updateDelayTimer && ![updateDelayTimer isValid])
+        return NO;
+
+    return actionQueue.length === 1 && [nextAction type] === saveActionType;
+}
+
+- (WLRemoteAction)nextAction
 {
     if (actionQueue.length == 0)
-    {
-        [self setShouldFlushActions:NO];
-        return;
-    }
+        return nil;
 
     var nextActionIndex = 0;
     if (!_retryOneAction && [self isInErrorState])
@@ -341,17 +355,29 @@ WLRemoteLinkStateRequestFailureError    = 2;
             /*
             There is no action appropriate for the current error state to execute at this time.
             */
-            return;
+            return nil;
         }
     }
+
+    return actionQueue[nextActionIndex];
+}
+
+- (void)maybeExecute
+{
+    var nextAction = [self nextAction];
+    if (!nextAction)
+    {
+        [self setShouldFlushActions:NO];
+        return;
+    }
+
     // This flag is 'used up'.
     _retryOneAction = NO;
 
-    var nextAction = actionQueue[nextActionIndex];
     if ([nextAction isExecuting] || [nextAction isDone])
         return;
 
-    if (!shouldFlushActions && actionQueue.length === 1 && [nextAction type] === saveActionType && updateDelay > 0)
+    if ([self willDelayAction])
     {
         if (updateDelayTimer === nil)
         {
@@ -364,17 +390,16 @@ WLRemoteLinkStateRequestFailureError    = 2;
             return;
     }
 
-    if (updateDelayTimer !== nil)
-    {
-        /*
-            We could get here from a) the timer firing or b) entering a
-            circumstance where the delay timer is no longer suitable. In both
-            cases the timer should be removed.
-        */
+    if (isDelayingAction)
         [self setIsDelayingAction:NO];
-        [updateDelayTimer invalidate];
-        updateDelayTimer = nil;
-    }
+
+    /*
+        We could get here from a) the timer firing or b) entering a
+        circumstance where the delay timer is no longer suitable. In both
+        cases the timer should be removed.
+    */
+    [updateDelayTimer invalidate];
+    updateDelayTimer = nil;
 
     [nextAction execute];
 }
