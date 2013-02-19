@@ -327,6 +327,65 @@ var IsNumberRegExp = new RegExp('^\d+$');
 @end
 
 /*!
+    Like WLForeignObjectByIdsTransformer except if an objecti n the remote array is a dictionary,
+    assume it's an inlined resource representation.
+
+    When writing to the API, always provide an array of ids.
+*/
+@implementation WLForeignObjectsByIdsOrInlinedObjectsTransformer : WLForeignObjectByIdTransformer
+{
+}
+
++ (Class)transformedValueClass
+{
+    return [CPArray class];
+}
+
+- (id)transformedValue:(id)values
+{
+    if (!values)
+        return nil;
+
+    if (!values.isa || ![values isKindOfClass:CPArray])
+        [CPException raise:CPInvalidArgumentException reason:"WLForeignObjectsTransformer expects arrays"];
+
+    var r = [];
+    for (var i = 0, count = [values count]; i < count; i++)
+    {
+        var aValue = values[i],
+            obj;
+
+        if (aValue && !aValue.isa)
+            obj = [[foreignClass alloc] initWithJson:aValue];
+        else
+            obj = [super transformedValue:aValue];
+
+        if (obj !== nil)
+            [r addObject:obj];
+    }
+
+    return r;
+}
+
+- (id)reverseTransformedValue:(id)values
+{
+    var r = [];
+
+    for (var i = 0, count = [values count]; i < count; i++)
+    {
+        var value = values[i],
+            repr = [super reverseTransformedValue:value];
+        if (repr)
+            [r addObject:repr];
+    }
+
+    return r;
+}
+
+@end
+
+
+/*!
     Takes a string and makes it a CPURL. Reversible.
 */
 @implementation WLURLTransformer : CPObject
