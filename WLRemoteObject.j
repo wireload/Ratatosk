@@ -746,8 +746,12 @@ function CamelCaseToHyphenated(camelCase)
 */
 - (boolean)needsSave
 {
-    var needsSave = ![self isNew] && [self isDirty],
-        saveActionType = [[[self context] remoteLink] saveActionType];
+    var needsSave = ![self isNew] && [self isDirty];
+
+    if (!needsSave)
+        return NO;
+
+    var saveActionType = [[[self context] remoteLink] saveActionType];
 
     [_actions enumerateObjectsWithOptions:CPEnumerationReverse usingBlock:function(anAction, anIndex, aStop)
         {
@@ -758,7 +762,7 @@ function CamelCaseToHyphenated(camelCase)
 
             if (type === WLRemoteActionPostType || type === saveActionType)
             {
-                needsSave = needsSave || [anAction isStarted];
+                needsSave = [anAction isStarted];
                 aStop(YES);
             }
             else if (type === WLRemoteActionDeleteType)
