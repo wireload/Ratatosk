@@ -859,7 +859,9 @@ function CamelCaseToHyphenated(camelCase)
     // to the server.
     [self makeAllDirty];
 
-    [_actions addObject:[WLRemoteAction schedule:WLRemoteActionPostType path:[self postPath] delegate:self message:"Create " + [self description]]];
+    // Path might not be known yet because it may depend on path of another remote object. The path will be
+    // set in remoteActionWillBegin when the path must be known.
+    [_actions addObject:[WLRemoteAction schedule:WLRemoteActionPostType path:nil delegate:self message:"Create " + [self description]]];
 }
 
 - (void)ensureDeleted
@@ -924,6 +926,7 @@ function CamelCaseToHyphenated(camelCase)
                 // Assume the action will succeed or retry until it does.
                 [self setLastSyncedAt:[CPDate date]];
                 _lastSyncedRevision = _revision;
+                [anAction setPath:[self postPath]];
             }
             else
             {
