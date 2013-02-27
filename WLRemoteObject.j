@@ -170,13 +170,23 @@ function CamelCaseToHyphenated(camelCase)
     Specify object properties by implementing this class method on subclasses. The format is:
 
     [
-        [<local property name> [, remote property name [, property transformer]]]
+        [<local property name> [, remote property name [, property transformer[, load only?]]]]
     ]
 
     If no remote property name is specified, the local property name is used as the remote property
     name.
 
     At a minimum the PK property has to be defined.
+
+    Load only properties are read from the server but never written back, even if the property
+    is changed locally. For instance, you might have a value which the server derives from other
+    values, so it's effectively read-only server side. But you know how to derive this value too,
+    so when you make local changes you want to immediately update your local value, thereby
+    changing it in the client. But you can't write that back to the server. Load-only will ensure
+    the property is READ from the server but never WRITTEN. Load-only properties do not affect
+    the object isDirty status and do not participate in automatic undo management.
+
+    The 'pk' property is automatically considered load only.
 */
 + (CPArray)remoteProperties
 {
@@ -233,17 +243,14 @@ function CamelCaseToHyphenated(camelCase)
             {
                 var property = otherProperties[i],
                     localName = property[0],
-                    remoteName = property[1],
-                    transformer = property[2];
+                    remoteName = property[1] || localName,
+                    transformer = property[2] || nil,
+                    loadOnly = (typeof property[3] !== "undefined") ? property[3] : localName == "pk" || NO;
 
                 if (!localName)
                     [CPException raise:CPInvalidArgumentException reason:@"Incorrect `+ (CPArray)remoteProperties` for RemoteObject class " + [self class] + "."];
-                if (!remoteName)
-                    remoteName = localName;
-                if (!transformer)
-                    transformer = nil;
 
-                [remoteProperties addObject:[RemoteProperty propertyWithLocalName:localName remoteName:remoteName transformer:transformer]];
+                [remoteProperties addObject:[RemoteProperty propertyWithLocalName:localName remoteName:remoteName transformer:transformer loadOnly:loadOnly]];
             }
         }
 
@@ -310,18 +317,18 @@ function CamelCaseToHyphenated(camelCase)
             [self addObserver:self forKeyPath:[property localName] options:nil context:property];
             // FIXME Since the undo manager is no longer read from a central place, this will do nothing.
             // This action needs to be taken when setUndoManager: is received instead.
-            [self registerKeyForUndoManagement:[property localName]];
+            [self registerKeyForUndoManagement:property];
         }
         [_remoteProperties addObject:property];
         [_deferredProperties addObject:property];
     }
 }
 
-- (void)registerKeyForUndoManagement:(CPString)aLocalName
+- (void)registerKeyForUndoManagement:(RemoteProperty)aProperty
 {
-    if (aLocalName == "pk")
+    if ([aProperty isLoadOnly])
         return;
-    [[self undoManager] observeChangesForKeyPath:aLocalName ofObject:self];
+    [[self undoManager] observeChangesForKeyPath:[aProperty localName] ofObject:self];
 }
 
 - (void)pkProperty
@@ -345,7 +352,7 @@ function CamelCaseToHyphenated(camelCase)
         property;
     while (property = [remotePropertiesEnumerator nextObject])
     {
-        [self registerKeyForUndoManagement:[property localName]];
+        [self registerKeyForUndoManagement:property];
         [self addObserver:self forKeyPath:[property localName] options:nil context:property];
 
         if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:[property localName]])
@@ -366,19 +373,33 @@ function CamelCaseToHyphenated(camelCase)
 
     if ([_remoteProperties containsObject:aContext])
     {
-        var before = [change valueForKey:CPKeyValueChangeOldKey],
-            after = [change valueForKey:CPKeyValueChangeNewKey],
-            localName = [aContext localName];
-        if (!isEqual(before, after))
-            [self makeDirtyProperty:localName];
-        [_deferredProperties removeObject:aContext];
+        var localName = [aContext localName],
+            kind = [change objectForKey:CPKeyValueChangeKindKey],
+            after = [change objectForKey:CPKeyValueChangeNewKey];
 
-        if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
+        if (kind === CPKeyValueChangeSetting)
         {
-            if ([after isKindOfClass:[CPArray class]])
+            var before = [change objectForKey:CPKeyValueChangeOldKey];
+
+            if (!isEqual(before, after))
+                [self makeDirtyProperty:localName];
+
+            [_deferredProperties removeObject:aContext];
+
+            if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
+            {
+                if ([after isKindOfClass:[CPArray class]])
+                    [after makeObjectsPerformSelector:@selector(ensureLoaded)];
+                else
+                    [self ensureLoaded];
+            }
+        }
+        else if (kind === CPKeyValueChangeInsertion || kind === CPKeyValueChangeReplacement)
+        {
+            [self makeDirtyProperty:localName];
+
+            if (_shouldAutoLoad && [[self class] automaticallyLoadsRemoteObjectsForKey:localName])
                 [after makeObjectsPerformSelector:@selector(ensureLoaded)];
-            else
-                [self ensureLoaded];
         }
     }
 }
@@ -446,6 +467,8 @@ function CamelCaseToHyphenated(camelCase)
 
     while (property = [objectEnumerator nextObject])
     {
+        if ([property isLoadOnly])
+            continue;
         var localName = [property localName];
         if (_propertyLastRevision[localName] && _propertyLastRevision[localName] > _lastSyncedRevision)
             [r addObject:property];
@@ -913,6 +936,7 @@ function CamelCaseToHyphenated(camelCase)
     CPString            localName @accessors;
     CPString            remoteName @accessors;
     CPValueTransformer  valueTransformer @accessors;
+    boolean             loadOnly @accessors(getter=isLoadOnly);
 }
 
 + (id)propertyWithName:(CPString)aName
@@ -925,12 +949,13 @@ function CamelCaseToHyphenated(camelCase)
     return [self propertyWithLocalName:aLocalName remoteName:aRemoteName transformer:nil];
 }
 
-+ (id)propertyWithLocalName:(CPString)aLocalName remoteName:(CPString)aRemoteName transformer:(CPValueTransformer)aTransformer
++ (id)propertyWithLocalName:(CPString)aLocalName remoteName:(CPString)aRemoteName transformer:(CPValueTransformer)aTransformer loadOnly:(boolean)shouldBeLoadOnly
 {
     var r = [RemoteProperty new];
     [r setLocalName:aLocalName];
     [r setRemoteName:aRemoteName];
     [r setValueTransformer:aTransformer];
+    [r setLoadOnly:shouldBeLoadOnly];
     return r;
 }
 
@@ -941,8 +966,7 @@ function CamelCaseToHyphenated(camelCase)
 
 - (CPString)description
 {
-    return "<RemoteProperty " + remoteName + ":" + localName + ">";
+    return "<RemoteProperty " + remoteName + ":" + localName + (loadOnly ? " (load-only)" : "") + ">";
 }
 
 @end
-
