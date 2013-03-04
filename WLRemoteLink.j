@@ -86,6 +86,61 @@ WLRemoteLinkStateRequestFailureError    = 2;
     id                  delegate @accessors;
 }
 
+- (void)init
+{
+    if (self = [super init])
+    {
+        state = 0;
+        // Optimistically assume we're authenticated initially.
+        isAuthenticated = YES;
+        _retryOneAction = NO;
+        lastSuccessfulSave = [CPDate date];
+        shouldFlushActions = NO;
+        actionQueue = [];
+        baseUrl = DefaultBaseUrl;
+        saveActionType = WLRemoteActionPatchType;
+    }
+
+    return self;
+}
+
+
+#pragma mark Properties
+
++ (CPSet)keyPathsForValuesAffectingIsInErrorState
+{
+    return [CPSet setWithObjects:"state"];
+}
+
+- (BOOL)isSecure
+{
+    var url = [CPURL URLWithString:baseUrl];
+    return [url scheme] == 'https';
+}
+
+/*!
+    Return true if the remote link is broken for any reason other than
+    not being authenticated.
+*/
+- (BOOL)isInErrorState
+{
+    return state == WLRemoteLinkStateRequestFailureError;
+}
+
+- (void)setState:(int)aState
+{
+    if (state === aState)
+        return;
+    state = aState;
+
+    // Maybe excute regardless of flag: there could be an 'error' action if YES, and if NO
+    // a previously blocked action may be startable.
+    [self maybeExecute];
+}
+
+
+#pragma mark Methods
+
 + (void)setDefaultBaseURL:(CPString)anApiUrl
 {
     DefaultBaseUrl = anApiUrl;
@@ -105,44 +160,6 @@ WLRemoteLinkStateRequestFailureError    = 2;
         SharedWLRemoteLink = [[WLRemoteLink alloc] init];
 
     return SharedWLRemoteLink;
-}
-
-+ (CPSet)keyPathsForValuesAffectingIsInErrorState
-{
-    return [CPSet setWithObjects:"state"];
-}
-
-- (void)init
-{
-    if (self = [super init])
-    {
-        state = 0;
-        // Optimistically assume we're authenticated initially.
-        isAuthenticated = YES;
-        _retryOneAction = NO;
-        lastSuccessfulSave = [CPDate date];
-        shouldFlushActions = NO;
-        actionQueue = [];
-        baseUrl = DefaultBaseUrl;
-        saveActionType = WLRemoteActionPatchType;
-    }
-
-    return self;
-}
-
-- (BOOL)isSecure
-{
-    var url = [CPURL URLWithString:baseUrl];
-    return [url scheme] == 'https';
-}
-
-/*!
-    Return true if the remote link is broken for any reason other than
-    not being authenticated.
-*/
-- (BOOL)isInErrorState
-{
-    return state == WLRemoteLinkStateRequestFailureError;
 }
 
 - (CPString)urlWithSslIffNeeded:(CPString)aUrl
@@ -168,57 +185,6 @@ WLRemoteLinkStateRequestFailureError    = 2;
 - (void)setUpdateDelay:(int)aDelay
 {
     updateDelay = aDelay;
-}
-
-- (void)scheduleAction:(WLRemoteAction)action
-{
-    // CPLog.info("Remote op scheduled: " + [action description]);
-    var i = [actionQueue count],
-        indexes = [CPIndexSet indexSetWithIndex:i];
-    [self willChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:"actionQueue"];
-    [actionQueue addObject:action];
-    [self didChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:"actionQueue"];
-
-    if ([action isSaveAction])
-        [self setHasSaveActions:YES];
-
-    //CPLog.info("Action queue: " + actionQueue);
-
-    // Limit the rate of actions to make sure the browser gets a chance to refresh
-    // the UI. This probably only really matters when running against localhost but
-    // it doesn't harm the general case that much.
-    window.setTimeout(function() {
-        [self maybeExecute];
-    }, 0.3);
-}
-
-- (void)unscheduleAction:(WLRemoteAction)anAction
-{
-    var i = [actionQueue indexOfObject:anAction];
-    if (i == CPNotFound)
-    {
-        CPLog.warn("Unschedule unscheduled action "+anAction);
-        return;
-    }
-
-    var indexes = [CPIndexSet indexSetWithIndex:i];
-    [self willChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:"actionQueue"];
-    [actionQueue removeObject:anAction];
-    [self didChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:"actionQueue"];
-
-    if ([anAction isSaveAction])
-        [self _updateHasSaveActions];
-}
-
-- (void)setState:(int)aState
-{
-    if (state === aState)
-        return;
-    state = aState;
-
-    // Maybe excute regardless of flag: there could be an 'error' action if YES, and if NO
-    // a previously blocked action may be startable.
-    [self maybeExecute];
 }
 
 - (void)setHasSaveActions:(BOOL)aFlag
@@ -305,23 +271,6 @@ WLRemoteLinkStateRequestFailureError    = 2;
     [self maybeExecute];
 }
 
-- (void)_updateHasSaveActions
-{
-    var r = NO;
-
-    for (var i = 0, count = [actionQueue count]; i < count; i++)
-    {
-        var anotherAction = actionQueue[i];
-
-        if ([anotherAction isSaveAction])
-        {
-            r = YES;
-            break;
-        }
-    }
-    [self setHasSaveActions:r];
-}
-
 - (BOOL)willDelayAction
 {
     if (!updateDelay || shouldFlushActions)
@@ -404,14 +353,6 @@ WLRemoteLinkStateRequestFailureError    = 2;
     [nextAction execute];
 }
 
-- (void)_updateWasDelayed
-{
-    // If a timer already exists, a new one will not be created. If the timer is invalid
-    // the action will be taken.
-    [updateDelayTimer invalidate];
-    [self maybeExecute];
-}
-
 - (CPArray)actionQueue
 {
     return actionQueue;
@@ -464,6 +405,77 @@ WLRemoteLinkStateRequestFailureError    = 2;
         [delegate remoteLink:self willSendRequest:aRequest withDelegate:aDelegate context:aContext];
 
     return [CPURLConnection connectionWithRequest:aRequest delegate:aDelegate];
+}
+
+
+#pragma mark - Managing Actions
+
+- (void)scheduleAction:(WLRemoteAction)action
+{
+    // CPLog.info("Remote op scheduled: " + [action description]);
+    var i = [actionQueue count],
+        indexes = [CPIndexSet indexSetWithIndex:i];
+    [self willChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:"actionQueue"];
+    [actionQueue addObject:action];
+    [self didChange:CPKeyValueChangeInsertion valuesAtIndexes:indexes forKey:"actionQueue"];
+
+    if ([action isSaveAction])
+        [self setHasSaveActions:YES];
+
+    //CPLog.info("Action queue: " + actionQueue);
+
+    // Limit the rate of actions to make sure the browser gets a chance to refresh
+    // the UI. This probably only really matters when running against localhost but
+    // it doesn't harm the general case that much.
+    window.setTimeout(function() {
+        [self maybeExecute];
+    }, 0.3);
+}
+
+- (void)unscheduleAction:(WLRemoteAction)anAction
+{
+    var i = [actionQueue indexOfObject:anAction];
+    if (i == CPNotFound)
+    {
+        CPLog.warn("Unschedule unscheduled action "+anAction);
+        return;
+    }
+
+    var indexes = [CPIndexSet indexSetWithIndex:i];
+    [self willChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:"actionQueue"];
+    [actionQueue removeObject:anAction];
+    [self didChange:CPKeyValueChangeRemoval valuesAtIndexes:indexes forKey:"actionQueue"];
+
+    if ([anAction isSaveAction])
+        [self _updateHasSaveActions];
+}
+
+
+#pragma mark Private
+
+- (void)_updateHasSaveActions
+{
+    var r = NO;
+
+    for (var i = 0, count = [actionQueue count]; i < count; i++)
+    {
+        var anotherAction = actionQueue[i];
+
+        if ([anotherAction isSaveAction])
+        {
+            r = YES;
+            break;
+        }
+    }
+    [self setHasSaveActions:r];
+}
+
+- (void)_updateWasDelayed
+{
+    // If a timer already exists, a new one will not be created. If the timer is invalid
+    // the action will be taken.
+    [updateDelayTimer invalidate];
+    [self maybeExecute];
 }
 
 @end
@@ -853,5 +865,3 @@ var WLRemoteActionSerial = 1;
 }
 
 @end
-
-
