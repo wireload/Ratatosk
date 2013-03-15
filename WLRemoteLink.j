@@ -112,6 +112,11 @@ WLRemoteLinkStateRequestFailureError    = 2;
     return [CPSet setWithObjects:"state"];
 }
 
++ (boolean)automaticallyNotifiesObserversOfState
+{
+    return NO;
+}
+
 - (BOOL)isSecure
 {
     var url = [CPURL URLWithString:baseUrl];
@@ -131,11 +136,14 @@ WLRemoteLinkStateRequestFailureError    = 2;
 {
     if (state === aState)
         return;
+
+    [self willChangeValueForKey:@"state"];
     state = aState;
 
     // Maybe excute regardless of flag: there could be an 'error' action if YES, and if NO
     // a previously blocked action may be startable.
     [self maybeExecute];
+    [self didChangeValueForKey:@"state"];
 }
 
 
