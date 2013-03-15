@@ -84,6 +84,8 @@ WLRemoteLinkStateRequestFailureError    = 2;
 
     CPString            authorizationHeader @accessors;
     id                  delegate @accessors;
+
+    int                 suspendCount;
 }
 
 - (void)init
@@ -99,6 +101,7 @@ WLRemoteLinkStateRequestFailureError    = 2;
         actionQueue = [];
         baseUrl = DefaultBaseUrl;
         saveActionType = WLRemoteActionPatchType;
+        suspendCount = 0;
     }
 
     return self;
@@ -456,6 +459,50 @@ WLRemoteLinkStateRequestFailureError    = 2;
 
     if ([anAction isSaveAction])
         [self _updateHasSaveActions];
+}
+
+
+#pragma mark - Suspending Actions
+
+- (void)suspend
+{
+    // http://ecma262-5.com/ELS5_HTML.htm#Section_8.5
+    if (suspendCount < 9007199254740992)
+    {
+        if (suspendCount === 0)
+            [self willChangeValueForKey:@"isSuspended"];
+
+        ++suspendCount;
+
+        if (suspendCount === 1)
+            [self didChangeValueForKey:@"isSuspended"];
+    }
+    else
+        CPLog.info(@"You've reached maximum value of the suspend counter. Subsequent calls (including current) will be dropped.");
+}
+
+- (void)resume
+{
+    if (suspendCount > 0)
+    {
+        if (suspendCount === 1)
+            [self willChangeValueForKey:@"isSuspended"]
+
+        --suspendCount;
+
+        if (suspendCount === 0)
+        {
+            [self maybeExecute];
+            [self didChangeValueForKey:@"isSuspended"];
+        }
+    }
+    else
+        CPLog.error(@"You've called -[WLRemoteLink resume] more times than -[WLRemoteLink suspend].");
+}
+
+- (boolean)isSuspended
+{
+    return suspendCount > 0;
 }
 
 
