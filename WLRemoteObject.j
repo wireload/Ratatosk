@@ -287,6 +287,12 @@ function CamelCaseToHyphenated(camelCase)
                     [existingObject updateFromJson:js];
                     return self;
                 }
+                else
+                {
+                    // Register the object for a given pk early, because the same pk can be encountered multiple times
+                    // within one JSON.
+                    [self setPk:pkValue];
+                }
             }
         }
 
