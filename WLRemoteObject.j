@@ -391,7 +391,7 @@ function CamelCaseToHyphenated(camelCase)
                 if ([after isKindOfClass:[CPArray class]])
                     [after makeObjectsPerformSelector:@selector(ensureLoaded)];
                 else
-                    [self ensureLoaded];
+                    [after ensureLoaded];
             }
         }
         else if (kind === CPKeyValueChangeInsertion || kind === CPKeyValueChangeReplacement)
