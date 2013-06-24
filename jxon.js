@@ -40,7 +40,7 @@ JXON.getJXONData = function(oXMLParent)
     var vResult = /* put here the default value for empty nodes! */ null,
         nLength = 0,
         sCollectedTxt = "";
-    if (oXMLParent.hasAttributes())
+    if (oXMLParent.hasAttributes && oXMLParent.hasAttributes())
     {
         vResult = {};
         for (nLength; nLength < oXMLParent.attributes.length; nLength++)
