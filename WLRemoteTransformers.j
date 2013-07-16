@@ -385,6 +385,35 @@ var IsNumberRegExp = new RegExp('^\d+$');
 @end
 
 /*!
+    Takes a string URI and makes it a CPImage. Reversible.
+*/
+@implementation WLImageTransformer : CPObject
+
++ (BOOL)allowsReverseTransformation
+{
+    return YES;
+}
+
++ (Class)transformedValueClass
+{
+    return [CPImage class];
+}
+
+- (id)transformedValue:(id)aValue
+{
+    if (!aValue)
+        return nil;
+    return [[CPImage alloc] initWithContentsOfFile:aValue];
+}
+
+- (id)reverseTransformedValue:(id)aValue
+{
+    return [aValue filename];
+}
+
+@end
+
+/*!
     Takes a boolean and makes it a boolean, which by itself would not be very useful. However, in reverse this transformer makes any JavaScript value into a boolean. E.g. nil and undefined become NO before being sent to the server.
 */
 @implementation WLBooleanTransformer : CPObject
