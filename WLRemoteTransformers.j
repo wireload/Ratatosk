@@ -174,7 +174,7 @@ var IsNumberRegExp = new RegExp('^\d+$');
 
 - (id)transformedValue:(id)values
 {
-    var r = [];
+    var r = [WLRemoteArray new];
 
     if (!values)
         return nil;
@@ -298,7 +298,7 @@ var IsNumberRegExp = new RegExp('^\d+$');
     if (!values.isa || ![values isKindOfClass:CPArray])
         [CPException raise:CPInvalidArgumentException reason:"WLForeignObjectsTransformer expects arrays"];
 
-    var r = [];
+    var r = [WLRemoteArray new];
     for (var i = 0, count = [values count]; i < count; i++)
     {
         var obj = [super transformedValue:values[i]];
@@ -380,6 +380,35 @@ var IsNumberRegExp = new RegExp('^\d+$');
 - (id)reverseTransformedValue:(id)aValue
 {
     return [aValue hexString];
+}
+
+@end
+
+/*!
+    Takes a string URI and makes it a CPImage. Reversible.
+*/
+@implementation WLImageTransformer : CPObject
+
++ (BOOL)allowsReverseTransformation
+{
+    return YES;
+}
+
++ (Class)transformedValueClass
+{
+    return [CPImage class];
+}
+
+- (id)transformedValue:(id)aValue
+{
+    if (!aValue)
+        return nil;
+    return [[CPImage alloc] initWithContentsOfFile:aValue];
+}
+
+- (id)reverseTransformedValue:(id)aValue
+{
+    return [aValue filename];
 }
 
 @end
