@@ -970,3 +970,20 @@ function CamelCaseToHyphenated(camelCase)
 }
 
 @end
+
+@import <Foundation/CPArray.j>
+
+@implementation WLRemoteArray : CPArray
+
+- (void)ensureLoaded
+{
+    var remoteObjectsEnumerator = [self objectEnumerator];
+        remoteObject;
+
+    while (remoteObject = [remoteObjectsEnumerator nextObject])
+    {
+        [remoteObject ensureLoaded];
+    }
+}
+
+@end
