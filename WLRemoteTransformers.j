@@ -174,7 +174,7 @@ var IsNumberRegExp = new RegExp('^\d+$');
 
 - (id)transformedValue:(id)values
 {
-    var r = [];
+    var r = [WLRemoteArray new];
 
     if (!values)
         return nil;
@@ -298,7 +298,7 @@ var IsNumberRegExp = new RegExp('^\d+$');
     if (!values.isa || ![values isKindOfClass:CPArray])
         [CPException raise:CPInvalidArgumentException reason:"WLForeignObjectsTransformer expects arrays"];
 
-    var r = [];
+    var r = [WLRemoteArray new];
     for (var i = 0, count = [values count]; i < count; i++)
     {
         var obj = [super transformedValue:values[i]];
