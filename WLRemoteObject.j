@@ -973,7 +973,7 @@ function CamelCaseToHyphenated(camelCase)
 
 @import <Foundation/CPArray.j>
 
-@implementation WLRemoteArray : CPArray
+@implementation WLRemoteArray : CPMutableArray
 
 - (void)ensureLoaded
 {
