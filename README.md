@@ -150,7 +150,7 @@ By default Ratatosk will transmit any changes you make using `PATCH` requests wh
 
 If your server does not support the `PATCH` verb you can use `PUT` instead. With `PUT` requests the whole serialised form of the resource is "put" to the server for each change.
 
-    [[WLRemoteLink sharedRemoteLink] setSaveAction:WLRemoteActionPutType];
+    [[WLRemoteLink sharedRemoteLink] setSaveActionType:WLRemoteActionPutType];
 
 ## License ##
 
