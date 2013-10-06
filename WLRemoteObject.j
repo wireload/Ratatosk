@@ -122,8 +122,8 @@ function CamelCaseToHyphenated(camelCase)
     if (r === nil && shouldCreate)
     {
         r = [self new];
-        // Setting the pk will automatically register it.
         [r setPk:pk];
+        [[WLRemoteContext sharedRemoteContext] registerObject:r];
     }
 
     return r;
