@@ -936,7 +936,7 @@ function CamelCaseToHyphenated(camelCase)
     CPString            localName @accessors;
     CPString            remoteName @accessors;
     CPValueTransformer  valueTransformer @accessors;
-    boolean             loadOnly @accessors(getter=isLoadOnly);
+    BOOL                loadOnly @accessors(getter=isLoadOnly);
 }
 
 + (id)propertyWithName:(CPString)aName

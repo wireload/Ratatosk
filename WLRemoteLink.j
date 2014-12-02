@@ -33,6 +33,8 @@
 
 @import <Foundation/Foundation.j>
 
+@typedef WLRemoteActionType
+
 var SharedWLRemoteLink      = nil,
     DefaultBaseUrl          = '/api/',
     WLRemoteLinkRetryDelay  = 10; // in seconds
