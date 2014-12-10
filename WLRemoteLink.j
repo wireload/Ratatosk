@@ -33,6 +33,8 @@
 
 @import <Foundation/Foundation.j>
 
+@typedef WLRemoteActionType
+
 var SharedWLRemoteLink      = nil,
     DefaultBaseUrl          = '/api/',
     WLRemoteLinkRetryDelay  = 10; // in seconds
@@ -112,7 +114,7 @@ WLRemoteLinkStateRequestFailureError    = 2;
     return [CPSet setWithObjects:"state"];
 }
 
-- (void)init
+- (id)init
 {
     if (self = [super init])
     {
